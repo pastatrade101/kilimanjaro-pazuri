@@ -90,18 +90,22 @@ Generate the password hash on any machine with Node:
 npm run hash-password -- "the admin password"
 ```
 
-**Start it** (Docker; the app listens on 127.0.0.1:3021):
+On the Makutano server this lives at `~/app/services/kilimanjaro-pazuri`,
+alongside the other sites.
+
+**Start it.** The port is not published; Caddy reaches the container by name
+over the shared `makutano-net`:
 
 ```bash
 docker compose up -d --build
-curl -fsS http://127.0.0.1:3021/api/health
 ```
 
-**Put Caddy in front** — append `deploy/Caddyfile.snippet` to the server's
-Caddyfile and reload. Caddy issues the certificate itself:
+**Put Caddy in front** — append `deploy/Caddyfile.snippet` to
+`~/app/config/Caddyfile`, then reload the Caddy container. It issues the
+certificate itself:
 
 ```bash
-sudo caddy reload --config /etc/caddy/Caddyfile
+docker exec makutano-digital-caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
 **Afterwards**, `./deploy/deploy.sh` pulls, rebuilds and health-checks.

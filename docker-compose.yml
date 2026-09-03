@@ -1,20 +1,46 @@
+# Kilimanjaro Pazuri — production deployment.
+#
+#   docker compose up -d --build
+#
+# Caddy terminates TLS for pazuri.makutano.co.tz and proxies to this container
+# over the shared `makutano-net` network, exactly as it does for Journeys and
+# Connect. The app port is NOT published to the host: the only way in is
+# through Caddy.
+
 services:
   kilimanjaro-pazuri:
     build: .
-    image: kilimanjaro-pazuri:latest
+    image: kilimanjaro-pazuri
     container_name: kilimanjaro-pazuri
     restart: unless-stopped
-    # Published on the loopback only; Caddy terminates TLS in front of it.
-    ports:
-      - '127.0.0.1:3021:3000'
+
     environment:
-      # Without ORIGIN, SvelteKit rejects every form POST with 403.
-      ORIGIN: https://pazuri.makutano.co.tz
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      # Public origin. REQUIRED behind a proxy or SvelteKit's CSRF origin check
+      # rejects every form POST.
+      ORIGIN: ${PUBLIC_SITE_URL:-https://pazuri.makutano.co.tz}
+      # Let adapter-node build correct https URLs from Caddy's forwarded headers.
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      # So the enquiry rate limiter sees the visitor, not Caddy.
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: 1
+      # The villa's rooms, enquiries and admin sessions.
       DATABASE_PATH: /data/kilimanjaro-pazuri.db
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+
     volumes:
       - pazuri-data:/data
 
+    networks:
+      - makutano-net
+
 volumes:
   pazuri-data:
+
+networks:
+  makutano-net:
+    external: true
