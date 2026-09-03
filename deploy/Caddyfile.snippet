@@ -1,0 +1,20 @@
+# Add to the server's Caddyfile, then: caddy reload --config /etc/caddy/Caddyfile
+# Caddy obtains and renews the certificate for this name automatically.
+
+pazuri.makutano.co.tz {
+	encode zstd gzip
+
+	# The villa's own photographs and the template assets are fingerprinted
+	# by SvelteKit under /_app/immutable; everything else is revalidated.
+	@immutable path /_app/immutable/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=604800"
+
+	reverse_proxy 127.0.0.1:3021 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}

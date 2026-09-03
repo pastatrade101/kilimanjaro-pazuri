@@ -1,0 +1,20 @@
+services:
+  kilimanjaro-pazuri:
+    build: .
+    image: kilimanjaro-pazuri:latest
+    container_name: kilimanjaro-pazuri
+    restart: unless-stopped
+    # Published on the loopback only; Caddy terminates TLS in front of it.
+    ports:
+      - '127.0.0.1:3021:3000'
+    environment:
+      # Without ORIGIN, SvelteKit rejects every form POST with 403.
+      ORIGIN: https://pazuri.makutano.co.tz
+      DATABASE_PATH: /data/kilimanjaro-pazuri.db
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+    volumes:
+      - pazuri-data:/data
+
+volumes:
+  pazuri-data:

@@ -1,48 +1,131 @@
 # Kilimanjaro Pazuri
 
-Website and lightweight enquiry manager for Kilimanjaro Pazuri, a boutique villa in Moshi, Tanzania.
+The website for Kilimanjaro Pazuri — a boutique African villa in Moshi, Tanzania.
 
-## Stack
+A SvelteKit application: the site and its backend are one deployable. Every
+word comes from the *Kilimanjaro Pazuri Brand & Copy Deck*, and the layout is
+built on the Zoomvilla single-property template, re-themed to the brand.
 
-- SvelteKit 2 and Svelte 5
-- TypeScript
-- SQLite via `better-sqlite3`
-- Node adapter for production
+Live at **https://pazuri.makutano.co.tz**
 
-## Local development
+---
 
-```sh
+## What is here
+
+| Path | What it holds |
+| --- | --- |
+| `src/lib/content/site.ts` | Every published sentence, in one file. The deck is the source of truth — edit here, not in the pages. |
+| `src/lib/server/` | The backend: SQLite schema and seed, queries, validation, sessions, rate limiting. |
+| `src/routes/(site)/` | The seven public pages plus the six room pages. |
+| `src/routes/api/` | JSON API: rooms, booking enquiries, contact, health. |
+| `src/routes/admin/` | Enquiry inbox, room and rate editing, and the pre-launch checklist. |
+| `static/assets/` | The template's CSS and icons, the brand layer, and the villa's own photographs. |
+| `deploy/` | Caddy snippet, systemd unit, deploy script. |
+
+The villa's photographs in `static/assets/images/villa/` were extracted from
+the brand deck. They are the property's own; the deck is explicit that stock
+imagery is not the brand.
+
+## Running it
+
+Requires **Node 22.12+** (this repo pins 22.16 in `.nvmrc`; Node 23 is not
+supported by the build toolchain).
+
+```bash
+nvm use
 npm install
 cp .env.example .env
+npm run hash-password -- "a password for the admin area"   # paste into .env
 npm run dev
 ```
 
-The site is available at `http://localhost:5173` by default.
+The database is created and seeded with the six rooms on first run.
 
-## Environment
+| Command | Does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run check` | Type and Svelte checking |
+| `npm run build` | Production build (adapter-node) |
+| `npm start` | Run the production build, reading `.env` |
+| `npm run hash-password -- "…"` | Print an `ADMIN_PASSWORD_HASH` line |
 
-Set these values in `.env`:
+## Configuration
 
-```env
-DATABASE_PATH=data/kilimanjaro-pazuri.db
-ADMIN_USERNAME=pazuri
-ADMIN_PASSWORD_HASH=generate-with-npm-run-hash-password
+| Variable | Required | Why |
+| --- | --- | --- |
+| `ORIGIN` | in production | SvelteKit rejects every form POST with 403 without it. |
+| `DATABASE_PATH` | yes | Where the SQLite file lives. Put it on a volume. |
+| `ADMIN_USERNAME` | yes | Sign-in for `/admin`. |
+| `ADMIN_PASSWORD_HASH` | yes | `salt:hash` from `npm run hash-password`. The plain password is never stored. |
+| `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | Otherwise the rate limiter sees only the proxy, putting every visitor in one bucket. |
+| `PORT` | no | Defaults to 3000. |
+
+## The API
+
+```
+GET  /api/health           service and room count
+GET  /api/rooms            the six rooms, rates and what each rate includes
+POST /api/bookings         a booking enquiry (JSON or form encoded)
+POST /api/contact          a general enquiry
 ```
 
-Generate an admin password hash with:
+Both `POST` endpoints validate their input, reject unknown rooms, carry a
+honeypot field, and are rate limited per address. Enquiries land in `/admin`.
 
-```sh
-npm run hash-password -- "your password"
+## Deploying
+
+DNS for `pazuri.makutano.co.tz` already points at the server, which runs Caddy.
+
+**On the server, once:**
+
+```bash
+git clone https://github.com/pastatrade101/kilimanjaro-pazuri.git
+cd kilimanjaro-pazuri
+cp .env.example .env      # then fill in ADMIN_USERNAME and ADMIN_PASSWORD_HASH
 ```
 
-Copy the printed value into `ADMIN_PASSWORD_HASH`. The local `.env` and SQLite data directory are intentionally excluded from Git.
+Generate the password hash on any machine with Node:
 
-## Validation and production
-
-```sh
-npm run check
-npm run build
-npm run start
+```bash
+npm run hash-password -- "the admin password"
 ```
 
-`npm run start` serves the Node production build using the values in `.env`.
+**Start it** (Docker; the app listens on 127.0.0.1:3021):
+
+```bash
+docker compose up -d --build
+curl -fsS http://127.0.0.1:3021/api/health
+```
+
+**Put Caddy in front** — append `deploy/Caddyfile.snippet` to the server's
+Caddyfile and reload. Caddy issues the certificate itself:
+
+```bash
+sudo caddy reload --config /etc/caddy/Caddyfile
+```
+
+**Afterwards**, `./deploy/deploy.sh` pulls, rebuilds and health-checks.
+
+Without Docker, use `deploy/kilimanjaro-pazuri.service` instead: build with
+`npm ci && npm run build`, then enable the unit.
+
+### The database
+
+SQLite, on the `pazuri-data` volume (or `data/` under systemd). It holds the
+rooms, the enquiries and the admin sessions. To back it up:
+
+```bash
+docker compose exec kilimanjaro-pazuri \
+  node -e "require('better-sqlite3')(process.env.DATABASE_PATH).backup('/data/backup.db')"
+```
+
+## Before the site goes live
+
+The copy is ready; fourteen operational details are not. They are listed on the
+admin dashboard and must be confirmed by the property owner before launch —
+among them the exact street address and Maps pin, check-in and check-out times,
+occupancy and bed type per room, the children and cancellation policies, and
+the exact spelling of the Seluhi room name.
+
+Until occupancy and bed type are confirmed in `/admin`, the room pages simply
+do not mention them, rather than publishing a placeholder as fact.
