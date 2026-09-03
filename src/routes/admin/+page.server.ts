@@ -10,8 +10,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const status = STATUSES.find((s) => s === filter);
 
 	return {
-		enquiries: listEnquiries(status),
-		counts: enquiryCounts(),
+		enquiries: await listEnquiries(status),
+		counts: await enquiryCounts(),
 		filter: status ?? null,
 		checklist: preLaunchChecklist
 	};
@@ -27,7 +27,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'That update was not understood.' });
 		}
 
-		setEnquiryStatus(id, status as (typeof STATUSES)[number]);
+		await setEnquiryStatus(id, status as (typeof STATUSES)[number]);
 		return { updated: true };
 	}
 };

@@ -23,7 +23,7 @@ export const actions: Actions = {
 			return fail(401, { error: 'Those details did not match.' });
 		}
 
-		createSession(username, cookies);
+		await createSession(username, cookies);
 
 		const next = url.searchParams.get('next');
 		redirect(303, next && next.startsWith('/admin') ? next : '/admin');

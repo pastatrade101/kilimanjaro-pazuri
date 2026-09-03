@@ -29,13 +29,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	}
 
 	const roomSlug = data.get('room');
-	if (typeof roomSlug === 'string' && roomSlug && !getRoom(roomSlug)) {
+	if (typeof roomSlug === 'string' && roomSlug && !(await getRoom(roomSlug))) {
 		return json({ error: 'Unknown room.', field: 'room' }, { status: 400 });
 	}
 
 	const result = validateEnquiry(data, 'booking');
 	if (!result.ok) return json({ error: 'Validation failed.', issues: result.issues }, { status: 400 });
 
-	const id = createEnquiry(result.value);
+	const id = await createEnquiry(result.value);
 	return json({ id, status: 'received' }, { status: 201 });
 };

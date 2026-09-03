@@ -27,19 +27,13 @@ services:
       # So the enquiry rate limiter sees the visitor, not Caddy.
       ADDRESS_HEADER: X-Forwarded-For
       XFF_DEPTH: 1
-      # The villa's rooms, enquiries and admin sessions.
-      DATABASE_PATH: /data/kilimanjaro-pazuri.db
+      # The villa's rooms, enquiries and admin sessions live in Supabase.
+      DATABASE_URL: ${DATABASE_URL}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
 
-    volumes:
-      - pazuri-data:/data
-
     networks:
       - makutano-net
-
-volumes:
-  pazuri-data:
 
 networks:
   makutano-net:

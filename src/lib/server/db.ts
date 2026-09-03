@@ -1,66 +1,35 @@
-import Database from 'better-sqlite3';
-import { existsSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import postgres, { type Sql } from 'postgres';
 import { env } from '$env/dynamic/private';
+// Inlined at build time, so the bundled server carries the schema with it and
+// there is still exactly one copy of it — the file the Supabase CLI applies.
+import migration from '../../../supabase/migrations/0001_init.sql?raw';
 
-const file = env.DATABASE_PATH || 'data/kilimanjaro-pazuri.db';
+/**
+ * Nothing connects and nothing throws when this module is imported: the build
+ * imports every server module to analyse routes, long before any environment
+ * exists. The client is created on the first query instead.
+ *
+ * Supabase's pooler on port 6543 runs pgbouncer in transaction mode, which
+ * cannot hold prepared statements between queries — hence `prepare: false`.
+ * A small pool is right here: this is one villa's website, and the pooler is
+ * already doing the multiplexing.
+ */
+function connect(): Sql {
+	if (!env.DATABASE_URL) {
+		throw new Error(
+			'DATABASE_URL is not set. Copy it from Supabase → Project Settings → Database → ' +
+				'Connection string → URI, and use the port 6543 pooler.'
+		);
+	}
 
-if (file !== ':memory:' && !existsSync(dirname(file))) {
-	mkdirSync(dirname(file), { recursive: true });
+	return postgres(env.DATABASE_URL, {
+		prepare: false,
+		max: Number(env.DATABASE_POOL_MAX ?? 5),
+		idle_timeout: 30,
+		connect_timeout: 15,
+		onnotice: () => {}
+	});
 }
-
-export const db = new Database(file);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
-	CREATE TABLE IF NOT EXISTS rooms (
-		id           INTEGER PRIMARY KEY AUTOINCREMENT,
-		slug         TEXT NOT NULL UNIQUE,
-		name         TEXT NOT NULL,
-		summary      TEXT NOT NULL,
-		rate_usd     INTEGER NOT NULL,
-		image        TEXT NOT NULL,
-		guests       TEXT NOT NULL DEFAULT 'To be confirmed',
-		bed          TEXT NOT NULL DEFAULT 'To be confirmed',
-		bathroom     TEXT NOT NULL DEFAULT 'Private',
-		is_available INTEGER NOT NULL DEFAULT 1,
-		position     INTEGER NOT NULL DEFAULT 0
-	);
-
-	CREATE TABLE IF NOT EXISTS enquiries (
-		id          INTEGER PRIMARY KEY AUTOINCREMENT,
-		kind        TEXT NOT NULL CHECK (kind IN ('booking', 'contact')),
-		name        TEXT NOT NULL,
-		email       TEXT NOT NULL,
-		phone       TEXT,
-		room_slug   TEXT,
-		check_in    TEXT,
-		check_out   TEXT,
-		guests      INTEGER,
-		message     TEXT,
-		status      TEXT NOT NULL DEFAULT 'new'
-		              CHECK (status IN ('new', 'read', 'replied', 'archived')),
-		created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_enquiries_created ON enquiries (created_at DESC);
-	CREATE INDEX IF NOT EXISTS idx_enquiries_status  ON enquiries (status);
-
-	CREATE TABLE IF NOT EXISTS gallery_images (
-		id       INTEGER PRIMARY KEY AUTOINCREMENT,
-		src      TEXT NOT NULL UNIQUE,
-		alt      TEXT NOT NULL,
-		grouping TEXT NOT NULL,
-		position INTEGER NOT NULL DEFAULT 0
-	);
-
-	CREATE TABLE IF NOT EXISTS sessions (
-		id         TEXT PRIMARY KEY,
-		username   TEXT NOT NULL,
-		expires_at INTEGER NOT NULL
-	);
-`);
 
 /**
  * The six rooms, their rates and their photographs, exactly as set out in the
@@ -132,24 +101,55 @@ const seedGallery = [
 	{ src: '/assets/images/villa/gallery-5.jpg', alt: 'A cot, available on request', grouping: 'Guest amenities' }
 ];
 
-const roomCount = db.prepare('SELECT COUNT(*) AS n FROM rooms').get() as { n: number };
-if (roomCount.n === 0) {
-	const insert = db.prepare(
-		`INSERT INTO rooms (slug, name, summary, rate_usd, image, position)
-		 VALUES (@slug, @name, @summary, @rate, @image, @position)`
-	);
-	db.transaction(() => {
-		seedRooms.forEach((room, i) => insert.run({ ...room, position: i }));
-	})();
+/**
+ * Applies the schema and seeds the rooms and gallery. Safe to run on every
+ * boot: the DDL is `if not exists`, and the seeds are keyed on the natural
+ * unique columns, so they fill an empty project and then do nothing.
+ */
+async function migrate(sql: Sql) {
+	await sql.unsafe(migration);
+
+	await sql`
+		INSERT INTO rooms (slug, name, summary, rate_usd, image, position)
+		SELECT r.slug, r.name, r.summary, r.rate, r.image, r.position
+		  FROM json_to_recordset(${JSON.stringify(
+				seedRooms.map((room, position) => ({ ...room, position }))
+			)}::json)
+		    AS r(slug text, name text, summary text, rate int, image text, position int)
+		ON CONFLICT (slug) DO NOTHING
+	`;
+
+	await sql`
+		INSERT INTO gallery_images (src, alt, grouping, position)
+		SELECT g.src, g.alt, g.grouping, g.position
+		  FROM json_to_recordset(${JSON.stringify(
+				seedGallery.map((image, position) => ({ ...image, position }))
+			)}::json)
+		    AS g(src text, alt text, grouping text, position int)
+		ON CONFLICT (src) DO NOTHING
+	`;
 }
 
-const galleryCount = db.prepare('SELECT COUNT(*) AS n FROM gallery_images').get() as { n: number };
-if (galleryCount.n === 0) {
-	const insert = db.prepare(
-		`INSERT INTO gallery_images (src, alt, grouping, position)
-		 VALUES (@src, @alt, @grouping, @position)`
-	);
-	db.transaction(() => {
-		seedGallery.forEach((image, i) => insert.run({ ...image, position: i }));
-	})();
+let client: Sql | null = null;
+let ready: Promise<Sql> | null = null;
+
+/**
+ * Returns a client whose schema is applied and whose rooms are seeded. Every
+ * query goes through here, so the migration cannot be skipped by accident.
+ *
+ * The work happens once and is then reused. A failure is not cached, so a
+ * database that was briefly unreachable recovers without a restart.
+ */
+export function dbReady(): Promise<Sql> {
+	if (!ready) {
+		ready = (async () => {
+			client ??= connect();
+			await migrate(client);
+			return client;
+		})().catch((error) => {
+			ready = null;
+			throw error;
+		});
+	}
+	return ready;
 }

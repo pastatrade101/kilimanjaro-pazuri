@@ -15,11 +15,12 @@ Live at **https://pazuri.makutano.co.tz**
 | Path | What it holds |
 | --- | --- |
 | `src/lib/content/site.ts` | Every published sentence, in one file. The deck is the source of truth — edit here, not in the pages. |
-| `src/lib/server/` | The backend: SQLite schema and seed, queries, validation, sessions, rate limiting. |
+| `src/lib/server/` | The backend: the Postgres connection, queries, validation, sessions, rate limiting. |
 | `src/routes/(site)/` | The seven public pages plus the six room pages. |
 | `src/routes/api/` | JSON API: rooms, booking enquiries, contact, health. |
 | `src/routes/admin/` | Enquiry inbox, room and rate editing, and the pre-launch checklist. |
 | `static/assets/` | The template's CSS and icons, the brand layer, and the villa's own photographs. |
+| `supabase/migrations/` | The schema. Applied on boot, and by `supabase db push`. |
 | `deploy/` | Caddy snippet, systemd unit, deploy script. |
 
 The villa's photographs in `static/assets/images/villa/` were extracted from
@@ -35,11 +36,14 @@ supported by the build toolchain).
 nvm use
 npm install
 cp .env.example .env
+# Put your Supabase pooler URL in DATABASE_URL, then:
 npm run hash-password -- "a password for the admin area"   # paste into .env
 npm run dev
 ```
 
-The database is created and seeded with the six rooms on first run.
+Data lives in **Supabase Postgres**. On first query the app applies
+`supabase/migrations/0001_init.sql` and seeds the six rooms and the gallery, so
+a fresh project needs nothing done by hand. Both steps are idempotent.
 
 | Command | Does |
 | --- | --- |
@@ -53,11 +57,12 @@ The database is created and seeded with the six rooms on first run.
 
 | Variable | Required | Why |
 | --- | --- | --- |
-| `ORIGIN` | in production | SvelteKit rejects every form POST with 403 without it. |
-| `DATABASE_PATH` | yes | Where the SQLite file lives. Put it on a volume. |
+| `DATABASE_URL` | yes | Supabase → Settings → Database → Connection string → URI. Use the **port 6543 pooler**. |
+| `ORIGIN` | in production | SvelteKit rejects every form POST with 403 without it. `docker-compose` sets it from `PUBLIC_SITE_URL`. |
 | `ADMIN_USERNAME` | yes | Sign-in for `/admin`. |
 | `ADMIN_PASSWORD_HASH` | yes | `salt:hash` from `npm run hash-password`. The plain password is never stored. |
 | `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | Otherwise the rate limiter sees only the proxy, putting every visitor in one bucket. |
+| `DATABASE_POOL_MAX` | no | Connections this app holds open. Defaults to 5. |
 | `PORT` | no | Defaults to 3000. |
 
 ## The API
@@ -115,12 +120,20 @@ Without Docker, use `deploy/kilimanjaro-pazuri.service` instead: build with
 
 ### The database
 
-SQLite, on the `pazuri-data` volume (or `data/` under systemd). It holds the
-rooms, the enquiries and the admin sessions. To back it up:
+Supabase Postgres — four tables: `rooms`, `enquiries`, `gallery_images` and
+`sessions`. Backups are Supabase's own; nothing on the server holds state, so
+the container can be rebuilt or moved freely.
+
+Row Level Security is enabled on all four tables and deliberately has **no
+policies**: the anon and service keys can therefore read nothing, even if one
+leaks. Access is only ever server-side, over `DATABASE_URL`, which connects as
+the table owner and bypasses RLS.
+
+To apply the schema yourself instead of letting the app do it:
 
 ```bash
-docker compose exec kilimanjaro-pazuri \
-  node -e "require('better-sqlite3')(process.env.DATABASE_PATH).backup('/data/backup.db')"
+supabase db push          # or paste supabase/migrations/0001_init.sql
+                          # into the SQL editor
 ```
 
 ## Before the site goes live

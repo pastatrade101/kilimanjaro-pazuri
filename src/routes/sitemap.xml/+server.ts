@@ -6,7 +6,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const origin = url.origin;
 	const paths = [
 		...nav.map((item) => item.href),
-		...listAvailableRooms().map((room) => `/rooms/${room.slug}`)
+		...(await listAvailableRooms()).map((room) => `/rooms/${room.slug}`)
 	];
 
 	const body = `<?xml version="1.0" encoding="UTF-8"?>

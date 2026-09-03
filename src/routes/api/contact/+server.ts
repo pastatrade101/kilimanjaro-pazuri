@@ -30,6 +30,6 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	const result = validateEnquiry(data, 'contact');
 	if (!result.ok) return json({ error: 'Validation failed.', issues: result.issues }, { status: 400 });
 
-	const id = createEnquiry(result.value);
+	const id = await createEnquiry(result.value);
 	return json({ id, status: 'received' }, { status: 201 });
 };

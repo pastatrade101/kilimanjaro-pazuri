@@ -48,7 +48,7 @@
 							</div>
 							<div class="form-one__control form-one__control--full">
 								<label>
-									<input type="checkbox" name="is_available" checked={room.is_available === 1} />
+									<input type="checkbox" name="is_available" checked={room.is_available} />
 									Available for booking
 								</label>
 							</div>

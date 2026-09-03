@@ -3,6 +3,6 @@ import type { RequestHandler } from './$types';
 import { destroySession } from '$lib/server/auth';
 
 export const POST: RequestHandler = async ({ cookies }) => {
-	destroySession(cookies);
+	await destroySession(cookies);
 	redirect(303, '/admin/login');
 };

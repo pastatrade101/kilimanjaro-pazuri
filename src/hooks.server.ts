@@ -2,10 +2,11 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { readSession, pruneSessions } from '$lib/server/auth';
 
-pruneSessions();
+// Fire and forget at boot; a failure here must not stop the server starting.
+void pruneSessions().catch(() => {});
 
 export const handle: Handle = async ({ event, resolve }) => {
-	event.locals.admin = readSession(event.cookies);
+	event.locals.admin = await readSession(event.cookies);
 
 	/*
 	 * The guard lives here, not in a layout load: SvelteKit runs form actions

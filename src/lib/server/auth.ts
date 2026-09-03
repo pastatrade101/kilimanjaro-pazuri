@@ -2,7 +2,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { Cookies } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
-import { db } from './db';
+import { dbReady } from './db';
 
 export const SESSION_COOKIE = 'kp_session';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -44,14 +44,14 @@ export function checkCredentials(username: string, password: string): boolean {
 	return userOk && passOk;
 }
 
-export function createSession(username: string, cookies: Cookies) {
+export async function createSession(username: string, cookies: Cookies) {
+	const sql = await dbReady();
 	const id = randomBytes(32).toString('hex');
-	const expiresAt = Date.now() + SESSION_TTL_MS;
-	db.prepare('INSERT INTO sessions (id, username, expires_at) VALUES (?, ?, ?)').run(
-		id,
-		username,
-		expiresAt
-	);
+	const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+	await sql`
+		INSERT INTO sessions (id, username, expires_at)
+		VALUES (${id}, ${username}, ${expiresAt})
+	`;
 	cookies.set(SESSION_COOKIE, id, {
 		path: '/',
 		httpOnly: true,
@@ -61,29 +61,34 @@ export function createSession(username: string, cookies: Cookies) {
 	});
 }
 
-export function readSession(cookies: Cookies): { username: string } | null {
+export async function readSession(cookies: Cookies): Promise<{ username: string } | null> {
 	const id = cookies.get(SESSION_COOKIE);
 	if (!id) return null;
 
-	const row = db.prepare('SELECT username, expires_at FROM sessions WHERE id = ?').get(id) as
-		| { username: string; expires_at: number }
-		| undefined;
+	const sql = await dbReady();
+	const [row] = await sql<{ username: string; expires_at: Date }[]>`
+		SELECT username, expires_at FROM sessions WHERE id = ${id}
+	`;
 
 	if (!row) return null;
-	if (Date.now() > row.expires_at) {
-		db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+	if (Date.now() > row.expires_at.getTime()) {
+		await sql`DELETE FROM sessions WHERE id = ${id}`;
 		return null;
 	}
 	return { username: row.username };
 }
 
-export function destroySession(cookies: Cookies) {
+export async function destroySession(cookies: Cookies) {
 	const id = cookies.get(SESSION_COOKIE);
-	if (id) db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+	if (id) {
+		const sql = await dbReady();
+		await sql`DELETE FROM sessions WHERE id = ${id}`;
+	}
 	cookies.delete(SESSION_COOKIE, { path: '/' });
 }
 
 /** Clears sessions that have already expired. */
-export function pruneSessions() {
-	db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());
+export async function pruneSessions() {
+	const sql = await dbReady();
+	await sql`DELETE FROM sessions WHERE expires_at < now()`;
 }

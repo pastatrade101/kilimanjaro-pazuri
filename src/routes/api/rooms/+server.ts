@@ -4,7 +4,7 @@ import { listAvailableRooms } from '$lib/server/repo';
 import { rooms as copy } from '$lib/content/site';
 
 export const GET: RequestHandler = async () => {
-	const rooms = listAvailableRooms().map((room) => ({
+	const rooms = (await listAvailableRooms()).map((room) => ({
 		slug: room.slug,
 		name: room.name,
 		summary: room.summary,

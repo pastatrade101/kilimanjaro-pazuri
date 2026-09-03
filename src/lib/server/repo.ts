@@ -1,4 +1,4 @@
-import { db } from './db';
+import { dbReady } from './db';
 
 export type Room = {
 	id: number;
@@ -10,7 +10,7 @@ export type Room = {
 	guests: string;
 	bed: string;
 	bathroom: string;
-	is_available: number;
+	is_available: boolean;
 	position: number;
 };
 
@@ -37,45 +37,69 @@ export type GalleryImage = {
 	position: number;
 };
 
-export function listRooms(): Room[] {
-	return db
-		.prepare('SELECT * FROM rooms ORDER BY position ASC, id ASC')
-		.all() as Room[];
+export type EnquiryStatus = Enquiry['status'];
+
+/** Dates come back as `Date`; the pages and the API want plain ISO days. */
+function isoDay(value: Date | string | null): string | null {
+	if (!value) return null;
+	if (value instanceof Date) return value.toISOString().slice(0, 10);
+	return value;
 }
 
-export function listAvailableRooms(): Room[] {
-	return db
-		.prepare('SELECT * FROM rooms WHERE is_available = 1 ORDER BY position ASC, id ASC')
-		.all() as Room[];
+function toEnquiry(row: Record<string, unknown>): Enquiry {
+	return {
+		...(row as unknown as Enquiry),
+		check_in: isoDay(row.check_in as Date | null),
+		check_out: isoDay(row.check_out as Date | null),
+		created_at:
+			row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at)
+	};
 }
 
-export function getRoom(slug: string): Room | undefined {
-	return db.prepare('SELECT * FROM rooms WHERE slug = ?').get(slug) as Room | undefined;
+export async function listRooms(): Promise<Room[]> {
+	const sql = await dbReady();
+	return sql<Room[]>`SELECT * FROM rooms ORDER BY position ASC, id ASC`;
 }
 
-export function updateRoom(
+export async function listAvailableRooms(): Promise<Room[]> {
+	const sql = await dbReady();
+	return sql<Room[]>`
+		SELECT * FROM rooms WHERE is_available ORDER BY position ASC, id ASC
+	`;
+}
+
+export async function getRoom(slug: string): Promise<Room | undefined> {
+	const sql = await dbReady();
+	const [room] = await sql<Room[]>`SELECT * FROM rooms WHERE slug = ${slug}`;
+	return room;
+}
+
+export async function updateRoom(
 	slug: string,
-	fields: { rate_usd: number; guests: string; bed: string; bathroom: string; is_available: number }
+	fields: { rate_usd: number; guests: string; bed: string; bathroom: string; is_available: boolean }
 ) {
-	return db
-		.prepare(
-			`UPDATE rooms
-			    SET rate_usd = @rate_usd, guests = @guests, bed = @bed,
-			        bathroom = @bathroom, is_available = @is_available
-			  WHERE slug = @slug`
-		)
-		.run({ ...fields, slug });
+	const sql = await dbReady();
+	return sql`
+		UPDATE rooms
+		   SET rate_usd     = ${fields.rate_usd},
+		       guests       = ${fields.guests},
+		       bed          = ${fields.bed},
+		       bathroom     = ${fields.bathroom},
+		       is_available = ${fields.is_available}
+		 WHERE slug = ${slug}
+	`;
 }
 
-export function listGallery(): GalleryImage[] {
-	return db
-		.prepare('SELECT * FROM gallery_images ORDER BY position ASC, id ASC')
-		.all() as GalleryImage[];
+export async function listGallery(): Promise<GalleryImage[]> {
+	const sql = await dbReady();
+	return sql<GalleryImage[]>`
+		SELECT * FROM gallery_images ORDER BY position ASC, id ASC
+	`;
 }
 
-export function groupedGallery(): { grouping: string; images: GalleryImage[] }[] {
+export async function groupedGallery(): Promise<{ grouping: string; images: GalleryImage[] }[]> {
 	const groups = new Map<string, GalleryImage[]>();
-	for (const image of listGallery()) {
+	for (const image of await listGallery()) {
 		const bucket = groups.get(image.grouping) ?? [];
 		bucket.push(image);
 		groups.set(image.grouping, bucket);
@@ -83,7 +107,7 @@ export function groupedGallery(): { grouping: string; images: GalleryImage[] }[]
 	return [...groups].map(([grouping, images]) => ({ grouping, images }));
 }
 
-export function createEnquiry(input: {
+export async function createEnquiry(input: {
 	kind: 'booking' | 'contact';
 	name: string;
 	email: string;
@@ -93,46 +117,53 @@ export function createEnquiry(input: {
 	checkOut?: string | null;
 	guests?: number | null;
 	message?: string | null;
-}): number {
-	const result = db
-		.prepare(
-			`INSERT INTO enquiries (kind, name, email, phone, room_slug, check_in, check_out, guests, message)
-			 VALUES (@kind, @name, @email, @phone, @roomSlug, @checkIn, @checkOut, @guests, @message)`
+}): Promise<number> {
+	const sql = await dbReady();
+	const [row] = await sql<{ id: number }[]>`
+		INSERT INTO enquiries (kind, name, email, phone, room_slug, check_in, check_out, guests, message)
+		VALUES (
+			${input.kind},
+			${input.name},
+			${input.email},
+			${input.phone ?? null},
+			${input.roomSlug ?? null},
+			${input.checkIn ?? null},
+			${input.checkOut ?? null},
+			${input.guests ?? null},
+			${input.message ?? null}
 		)
-		.run({
-			kind: input.kind,
-			name: input.name,
-			email: input.email,
-			phone: input.phone ?? null,
-			roomSlug: input.roomSlug ?? null,
-			checkIn: input.checkIn ?? null,
-			checkOut: input.checkOut ?? null,
-			guests: input.guests ?? null,
-			message: input.message ?? null
-		});
-	return Number(result.lastInsertRowid);
+		RETURNING id
+	`;
+	return row.id;
 }
 
-export function listEnquiries(status?: Enquiry['status']): Enquiry[] {
-	if (status) {
-		return db
-			.prepare('SELECT * FROM enquiries WHERE status = ? ORDER BY created_at DESC, id DESC')
-			.all(status) as Enquiry[];
-	}
-	return db
-		.prepare("SELECT * FROM enquiries WHERE status != 'archived' ORDER BY created_at DESC, id DESC")
-		.all() as Enquiry[];
+export async function listEnquiries(status?: EnquiryStatus): Promise<Enquiry[]> {
+	const sql = await dbReady();
+	const rows = status
+		? await sql`
+				SELECT * FROM enquiries
+				 WHERE status = ${status}
+				 ORDER BY created_at DESC, id DESC
+			`
+		: await sql`
+				SELECT * FROM enquiries
+				 WHERE status <> 'archived'
+				 ORDER BY created_at DESC, id DESC
+			`;
+	return rows.map((row) => toEnquiry(row as Record<string, unknown>));
 }
 
-export function setEnquiryStatus(id: number, status: Enquiry['status']) {
-	return db.prepare('UPDATE enquiries SET status = ? WHERE id = ?').run(status, id);
+export async function setEnquiryStatus(id: number, status: EnquiryStatus) {
+	const sql = await dbReady();
+	return sql`UPDATE enquiries SET status = ${status} WHERE id = ${id}`;
 }
 
-export function enquiryCounts() {
-	const rows = db
-		.prepare('SELECT status, COUNT(*) AS n FROM enquiries GROUP BY status')
-		.all() as { status: string; n: number }[];
+export async function enquiryCounts(): Promise<Record<string, number>> {
+	const sql = await dbReady();
+	const rows = await sql<{ status: string; n: string }[]>`
+		SELECT status, COUNT(*) AS n FROM enquiries GROUP BY status
+	`;
 	const counts: Record<string, number> = { new: 0, read: 0, replied: 0, archived: 0 };
-	for (const row of rows) counts[row.status] = row.n;
+	for (const row of rows) counts[row.status] = Number(row.n);
 	return counts;
 }

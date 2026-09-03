@@ -5,7 +5,7 @@ import { validateEnquiry, type Issues } from '$lib/server/validate';
 import { limitEnquiries } from '$lib/server/ratelimit';
 
 export const load: PageServerLoad = async () => {
-	return { rooms: listAvailableRooms() };
+	return { rooms: await listAvailableRooms() };
 };
 
 export const actions: Actions = {
@@ -20,7 +20,7 @@ export const actions: Actions = {
 		const result = validateEnquiry(data, 'contact');
 		if (!result.ok) return fail(400, { issues: result.issues, values: result.values });
 
-		createEnquiry(result.value);
+		await createEnquiry(result.value);
 		return { success: true };
 	}
 };
