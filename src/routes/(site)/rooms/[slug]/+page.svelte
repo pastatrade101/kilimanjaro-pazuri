@@ -1,0 +1,205 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import Seo from '$lib/components/Seo.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
+	import RoomCard from '$lib/components/RoomCard.svelte';
+	import { rooms as copy, site, actions } from '$lib/content/site';
+	import type { ActionData, PageData } from './$types';
+
+	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	const room = $derived(data.room);
+	const issues = $derived(form?.issues ?? {});
+	const values = $derived(form?.values ?? {});
+	const heroStats = $derived([
+		{ label: 'Nightly rate', value: `$${room.rate_usd} USD` },
+		{ label: 'Bathroom', value: room.bathroom },
+		{ label: 'Breakfast', value: 'Included' }
+	]);
+</script>
+
+<Seo
+	title="{room.name} | {site.name} Moshi"
+	description="{room.summary} {copy.pageIntro}"
+	image={room.image}
+/>
+
+<PageHeader
+	title={room.name}
+	crumb={room.name}
+	image={room.image}
+	lead={room.summary}
+	stats={heroStats}
+	statsLabel="Room highlights"
+/>
+
+<section class="apartment-details-one section-space">
+	<div class="container">
+		<div class="row gutter-y-50">
+			<div class="col-lg-7">
+				<div class="kp-room__hero hover:shine wow fadeInLeft" data-wow-duration="1200ms">
+					<img src={room.image} alt={room.name} width="900" height="600" />
+				</div>
+
+				<div class="sec-title text-start mt-5">
+					<div class="sec-title__top justify-content-start">
+						<span class="line-left"></span>
+						<h6 class="sec-title__tagline">Your room</h6>
+					</div>
+					<h3 class="sec-title__title kp-reveal">{room.name}</h3>
+				</div>
+
+				<p class="wow fadeInUp" data-wow-duration="1500ms">{copy.pageIntro}</p>
+				<p class="wow fadeInUp" data-wow-duration="1500ms" data-wow-delay="100ms">{room.summary}</p>
+
+				<dl class="kp-room__facts wow fadeInUp" data-wow-duration="1200ms">
+					<div>
+						<dt>Rate</dt>
+						<dd class="kp-room__facts__value">${room.rate_usd} <small>per night</small></dd>
+					</div>
+					{#if room.guests !== copy.unconfirmed}
+						<div>
+							<dt>Guests</dt>
+							<dd class="kp-room__facts__value">{room.guests}</dd>
+						</div>
+					{/if}
+					{#if room.bed !== copy.unconfirmed}
+						<div>
+							<dt>Bed</dt>
+							<dd class="kp-room__facts__value">{room.bed}</dd>
+						</div>
+					{/if}
+					<div>
+						<dt>Bathroom</dt>
+						<dd class="kp-room__facts__value">{room.bathroom}</dd>
+					</div>
+					<div>
+						<dt>Breakfast</dt>
+						<dd class="kp-room__facts__value">Included</dd>
+					</div>
+				</dl>
+
+				<h4 class="kp-amenity-group__title">Always included</h4>
+				<ul class="kp-amenity-list wow fadeInUp" data-wow-duration="1500ms">
+					{#each copy.included as item (item)}
+						<li><i class="icon-check-star"></i><span>{item}</span></li>
+					{/each}
+				</ul>
+			</div>
+
+			<div class="col-lg-5">
+				<aside class="kp-booking">
+					<div class="kp-booking__card">
+						<div class="kp-booking__price">
+							<span class="kp-booking__amount">${room.rate_usd}</span>
+							<span class="kp-booking__per">US dollars, per room per night</span>
+						</div>
+
+						{#if form?.success}
+							<div class="kp-alert kp-alert--ok" role="status">
+								Thank you — your enquiry for the {room.name} has reached us. We will reply by
+								email shortly.
+							</div>
+						{:else}
+							{#if issues.form}
+								<div class="kp-alert kp-alert--bad" role="alert">{issues.form}</div>
+							{/if}
+
+							<h2 class="kp-booking__title">{copy.cta}</h2>
+
+							<form method="POST" use:enhance class="kp-form">
+								<div class="kp-field-row">
+									<div class="kp-field">
+										<label for="bk-name">Your name</label>
+										<input id="bk-name" type="text" name="name" autocomplete="name" required value={values.name ?? ''} />
+										{#if issues.name}<span class="kp-form__error">{issues.name}</span>{/if}
+									</div>
+
+									<div class="kp-field">
+										<label for="bk-email">Your email</label>
+										<input id="bk-email" type="email" name="email" autocomplete="email" required value={values.email ?? ''} />
+										{#if issues.email}<span class="kp-form__error">{issues.email}</span>{/if}
+									</div>
+								</div>
+
+								<div class="kp-field-row">
+									<div class="kp-field">
+										<label for="bk-phone">Telephone or WhatsApp</label>
+										<input id="bk-phone" type="tel" name="phone" autocomplete="tel" value={values.phone ?? ''} />
+										{#if issues.phone}<span class="kp-form__error">{issues.phone}</span>{/if}
+									</div>
+
+									<div class="kp-field">
+										<label for="bk-guests">Guests</label>
+										<input id="bk-guests" type="number" name="guests" min="1" max="20" value={values.guests ?? ''} />
+										{#if issues.guests}<span class="kp-form__error">{issues.guests}</span>{/if}
+									</div>
+								</div>
+
+								<div class="kp-field-row">
+									<div class="kp-field">
+										<label for="bk-in">Arrival</label>
+										<input id="bk-in" type="date" name="check_in" value={values.check_in ?? ''} />
+										{#if issues.check_in}<span class="kp-form__error">{issues.check_in}</span>{/if}
+									</div>
+									<div class="kp-field">
+										<label for="bk-out">Departure</label>
+										<input id="bk-out" type="date" name="check_out" value={values.check_out ?? ''} />
+										{#if issues.check_out}<span class="kp-form__error">{issues.check_out}</span>{/if}
+									</div>
+								</div>
+
+								<div class="kp-field">
+									<label for="bk-message">Anything we should know?</label>
+									<textarea id="bk-message" name="message" rows="3">{values.message ?? ''}</textarea>
+									{#if issues.message}<span class="kp-form__error">{issues.message}</span>{/if}
+								</div>
+
+								<div class="kp-honeypot" aria-hidden="true">
+									<label for="bk-website">Leave this empty</label>
+									<input type="text" id="bk-website" name="website" tabindex="-1" autocomplete="off" />
+								</div>
+
+								<button type="submit" class="kp-btn kp-btn--primary kp-booking__submit">
+									{copy.cta}
+								</button>
+							</form>
+						{/if}
+
+						<div class="kp-booking__direct">
+							<span class="kp-booking__or">Or reach us directly</span>
+							<div class="kp-booking__links">
+								<a href={actions.whatsapp.href} target="_blank" rel="noopener">
+									<i class="fab fa-whatsapp" aria-hidden="true"></i> {actions.whatsapp.label}
+								</a>
+								<a href={actions.call.href}>
+									<i class="icon-phone-call" aria-hidden="true"></i> {actions.call.label}
+								</a>
+							</div>
+						</div>
+					</div>
+				</aside>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="apartment-one section-space-bottom">
+	<div class="container">
+		<div class="sec-title text-center">
+			<div class="sec-title__top justify-content-center">
+				<span class="line-left"></span>
+				<h6 class="sec-title__tagline">Other rooms</h6>
+				<span class="line-right"></span>
+			</div>
+			<h3 class="sec-title__title kp-reveal">You may also like</h3>
+		</div>
+		<div class="row gutter-y-30">
+			{#each data.others as other, i (other.slug)}
+				<div class="col-lg-4 col-md-6">
+					<RoomCard room={other} delay={150 + i * 100} />
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
