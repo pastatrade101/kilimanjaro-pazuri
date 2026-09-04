@@ -13,12 +13,20 @@ export const actions: Actions = {
 
 		if (!(await getRoom(slug))) return fail(404, { error: 'That room no longer exists.' });
 
+		// Checklist item 14 is the exact spelling of the Seluhi room name, so
+		// this field exists to be corrected — but never emptied.
+		const name = String(data.get('name') ?? '').trim();
+		if (name.length < 2 || name.length > 80) {
+			return fail(400, { error: 'A room name needs between 2 and 80 characters.', slug });
+		}
+
 		const rate = Number(data.get('rate_usd'));
 		if (!Number.isInteger(rate) || rate < 0 || rate > 100000) {
 			return fail(400, { error: 'Please enter a whole rate in US dollars.', slug });
 		}
 
 		await updateRoom(slug, {
+			name,
 			rate_usd: rate,
 			guests: String(data.get('guests') ?? '').trim() || 'To be confirmed',
 			bed: String(data.get('bed') ?? '').trim() || 'To be confirmed',

@@ -88,12 +88,23 @@ export async function getRoom(slug: string): Promise<Room | undefined> {
 
 export async function updateRoom(
 	slug: string,
-	fields: { rate_usd: number; guests: string; bed: string; bathroom: string; is_available: boolean }
+	fields: {
+		name: string;
+		rate_usd: number;
+		guests: string;
+		bed: string;
+		bathroom: string;
+		is_available: boolean;
+	}
 ) {
 	const sql = await dbReady();
+	// The slug is deliberately not editable: it is the room's URL, and it is
+	// what past enquiries recorded. Renaming a room changes what guests read,
+	// not where the page lives.
 	return sql`
 		UPDATE rooms
-		   SET rate_usd     = ${fields.rate_usd},
+		   SET name         = ${fields.name},
+		       rate_usd     = ${fields.rate_usd},
 		       guests       = ${fields.guests},
 		       bed          = ${fields.bed},
 		       bathroom     = ${fields.bathroom},

@@ -5366,3 +5366,25 @@ img {
 		height: 2px;
 	}
 }
+
+/* A checkbox and its words read as one control. */
+.kp-check {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	text-transform: none;
+	letter-spacing: 0;
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--kp-green);
+	cursor: pointer;
+}
+
+.kp-check input {
+	width: 18px;
+	height: 18px;
+	min-height: 0;
+	margin: 0;
+	accent-color: var(--kp-green);
+	flex: 0 0 auto;
+}
