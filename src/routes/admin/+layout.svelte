@@ -18,6 +18,9 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
+{#if page.url.pathname === '/admin/login'}
+	{@render children()}
+{:else}
 <div class="kp-admin">
 	<div class="container">
 		<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
@@ -49,3 +52,4 @@
 		{@render children()}
 	</div>
 </div>
+{/if}
