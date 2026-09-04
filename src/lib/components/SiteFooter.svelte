@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { site, nav, footer, actions } from '$lib/content/site';
+	import { page } from '$app/state';
+
+	const content = $derived(page.data.content);
+	const site = $derived(content.site);
+	const nav = $derived(content.nav);
+	const footer = $derived(content.footer);
+	const actions = $derived(content.actions);
 </script>
 
 <!--

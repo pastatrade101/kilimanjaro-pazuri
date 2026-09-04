@@ -3,10 +3,14 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RoomCard from '$lib/components/RoomCard.svelte';
-	import { rooms as copy, site, actions } from '$lib/content/site';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	const content = $derived(data.content);
+	const copy = $derived(content.rooms);
+	const site = $derived(content.site);
+	const actions = $derived(content.actions);
 
 	const room = $derived(data.room);
 	const issues = $derived(form?.issues ?? {});

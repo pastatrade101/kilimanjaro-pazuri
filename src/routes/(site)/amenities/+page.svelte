@@ -2,7 +2,14 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import BookingCta from '$lib/components/BookingCta.svelte';
-	import { amenities, site } from '$lib/content/site';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const amenities = $derived(content.amenities);
+	const site = $derived(content.site);
 
 	const heroStats = [
 		{ label: 'Breakfast', value: 'Included' },
@@ -16,7 +23,7 @@
 <PageHeader
 	title="Amenities"
 	crumb="Amenities"
-	image="/assets/images/villa/dining.jpg"
+	image={images.amenitiesHeader}
 	lead={amenities.heroLead}
 	stats={heroStats}
 	statsLabel="Amenity highlights"

@@ -2,17 +2,26 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import BookingCta from '$lib/components/BookingCta.svelte';
-	import { about, actions, site, home } from '$lib/content/site';
+	import type { PageData } from './$types';
 
-	const heroStats = [
+	let { data }: { data: PageData } = $props();
+
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const about = $derived(content.about);
+	const actions = $derived(content.actions);
+	const site = $derived(content.site);
+	const home = $derived(content.home);
+
+	const heroStats = $derived([
 		{ label: 'Setting', value: 'Private villa' },
 		{ label: 'Location', value: 'Moshi, Tanzania' },
-		{ label: 'Reception', value: '6 languages' }
-	];
-	const heroActions = [
+		{ label: 'Reception', value: `${about.languages.length} languages` }
+	]);
+	const heroActions = $derived([
 		{ label: 'Explore our rooms', href: '/rooms' },
 		{ label: actions.whatsapp.label, href: actions.whatsapp.href, external: true }
-	];
+	]);
 </script>
 
 <Seo title="About | {site.name} Moshi" description={about.paragraphs[0]} />
@@ -20,7 +29,7 @@
 <PageHeader
 	title={about.title}
 	crumb="About"
-	image="/assets/images/villa/dining.jpg"
+	image={images.aboutHeader}
 	lead={about.heroLead}
 	stats={heroStats}
 	statsLabel="Villa highlights"
@@ -33,7 +42,7 @@
 			<div class="kp-about-story__media wow fadeInLeft" data-wow-duration="1200ms">
 				<figure class="kp-about-story__photo kp-about-story__photo--main hover:shine">
 					<img
-						src="/assets/images/villa/hero-garden-suite.jpg"
+						src={images.aboutOne}
 						alt="A spacious guest room at Kilimanjaro Pazuri"
 						width="1200"
 						height="900"
@@ -43,7 +52,7 @@
 
 				<figure class="kp-about-story__photo kp-about-story__photo--detail hover:shine">
 					<img
-						src="/assets/images/villa/kitchen.jpg"
+						src={images.aboutTwo}
 						alt="The shared kitchen at Kilimanjaro Pazuri"
 						width="900"
 						height="640"

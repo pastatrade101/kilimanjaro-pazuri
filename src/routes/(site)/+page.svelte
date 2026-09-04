@@ -3,33 +3,40 @@
 	import RoomCard from '$lib/components/RoomCard.svelte';
 	import BookingCta from '$lib/components/BookingCta.svelte';
 	import HeroSlider from '$lib/components/HeroSlider.svelte';
-	import { home, site, seo, actions, amenities } from '$lib/content/site';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	const heroSlides = [
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const site = $derived(content.site);
+	const home = $derived(content.home);
+	const actions = $derived(content.actions);
+	const amenities = $derived(content.amenities);
+	const seo = $derived(content.seo);
+
+	const heroSlides = $derived([
 		{
-			src: '/assets/images/villa/hero-garden-suite.jpg',
+			src: images.homeHeroOne,
 			alt: 'The garden suite at Kilimanjaro Pazuri',
 			caption: 'The garden suite'
 		},
 		{
-			src: '/assets/images/villa/room-5.jpg',
+			src: images.homeHeroTwo,
 			alt: 'The Zanzibar Room',
 			caption: 'The Zanzibar Room'
 		},
 		{
-			src: '/assets/images/villa/dining.jpg',
+			src: images.homeHeroThree,
 			alt: 'The dining room at Kilimanjaro Pazuri',
 			caption: 'The dining room'
 		},
 		{
-			src: '/assets/images/villa/gallery-6.jpg',
+			src: images.homeHeroFour,
 			alt: 'Seating in the villa',
 			caption: 'A quiet corner of the villa'
 		}
-	];
+	]);
 
 
 </script>
@@ -65,7 +72,7 @@
 <section class="kp-intro" id="about">
 	<div class="kp-intro__inner">
 		<figure class="kp-intro__media wow fadeInLeft" data-wow-duration="1200ms">
-			<img src="/assets/images/villa/room-3.jpg" alt="A room at Kilimanjaro Pazuri" loading="lazy" />
+			<img src={images.homeWelcome} alt="A room at Kilimanjaro Pazuri" loading="lazy" />
 			<figcaption>The Tarangire Room</figcaption>
 		</figure>
 

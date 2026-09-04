@@ -3,10 +3,15 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RoomCard from '$lib/components/RoomCard.svelte';
 	import BookingCta from '$lib/components/BookingCta.svelte';
-	import { actions, rooms as copy, seo } from '$lib/content/site';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const copy = $derived(content.rooms);
+	const seo = $derived(content.seo);
+	const actions = $derived(content.actions);
 
 	const lowestRate = $derived(
 		data.rooms.length > 0 ? Math.min(...data.rooms.map((room) => room.rate_usd)) : 0
@@ -33,7 +38,7 @@
 <PageHeader
 	title="Rooms & Rates"
 	crumb="Rooms & Rates"
-	image="/assets/images/villa/hero-garden-suite.jpg"
+	image={images.roomsHeader}
 	lead={copy.heroLead}
 	stats={heroStats}
 	statsLabel="Room and rate highlights"

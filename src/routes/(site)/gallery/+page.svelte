@@ -2,10 +2,15 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import BookingCta from '$lib/components/BookingCta.svelte';
-	import { actions, gallery, site } from '$lib/content/site';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const actions = $derived(content.actions);
+	const gallery = $derived(content.gallery);
+	const site = $derived(content.site);
 
 	const imageCount = $derived(
 		data.groups.reduce((total, group) => total + group.images.length, 0)
@@ -15,10 +20,10 @@
 		{ label: 'Photography', value: `${imageCount} images` },
 		{ label: 'Larger view', value: 'Select any image' }
 	]);
-	const heroActions = [
+	const heroActions = $derived([
 		{ label: 'Explore the gallery', href: '#gallery-collections' },
 		{ label: actions.rooms.label, href: actions.rooms.href }
-	];
+	]);
 
 	function groupId(name: string) {
 		return `gallery-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
@@ -39,7 +44,7 @@
 <PageHeader
 	title="Inside Kilimanjaro Pazuri"
 	crumb="Gallery"
-	image="/assets/images/villa/room-5.jpg"
+	image={images.galleryHeader}
 	lead={gallery.heroLead}
 	stats={heroStats}
 	statsLabel="Gallery highlights"

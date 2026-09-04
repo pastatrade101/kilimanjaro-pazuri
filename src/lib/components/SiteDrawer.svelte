@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { site, nav, actions } from '$lib/content/site';
+	const content = $derived(page.data.content);
+	const site = $derived(content.site);
+	const nav = $derived(content.nav);
+	const actions = $derived(content.actions);
 	import { ui, closeDrawer } from '$lib/state/ui.svelte';
 
 	let panel = $state<HTMLElement | null>(null);

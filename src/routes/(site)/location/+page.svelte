@@ -2,22 +2,32 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import BookingCta from '$lib/components/BookingCta.svelte';
-	import { actions, location, site, seo } from '$lib/content/site';
+	import type { PageData } from './$types';
 
-	// Moshi, Kilimanjaro Region. Replace with the exact pin once the street
-	// address is confirmed — item 1 on the pre-launch checklist.
-	const mapQuery = encodeURIComponent('Moshi, Kilimanjaro Region, Tanzania');
-	const mapSrc = `https://www.google.com/maps?q=${mapQuery}&output=embed`;
-	const directions = `https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`;
-	const heroStats = [
-		{ label: 'Your base', value: 'Moshi, Tanzania' },
-		{ label: 'Railway station', value: 'About 7 km' },
-		{ label: 'International airport', value: 'About 44 km' }
-	];
-	const heroActions = [
+	let { data }: { data: PageData } = $props();
+
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const actions = $derived(content.actions);
+	const location = $derived(content.location);
+	const site = $derived(content.site);
+	const seo = $derived(content.seo);
+
+	// Editable in the admin area, so the exact pin can replace the town once
+	// the street address is confirmed — item 1 on the pre-launch checklist.
+	const mapQuery = $derived(encodeURIComponent(location.mapQuery));
+	const mapSrc = $derived(`https://www.google.com/maps?q=${mapQuery}&output=embed`);
+	const directions = $derived(
+		`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`
+	);
+	const heroStats = $derived([
+		{ label: 'Your base', value: site.location },
+		...location.distances.slice(0, 2).map((d) => ({ label: d.name, value: d.distance }))
+	]);
+	const heroActions = $derived([
 		{ label: location.mapCta, href: directions, external: true },
 		{ label: 'Ask for the arrival pin', href: actions.whatsapp.href, external: true }
-	];
+	]);
 </script>
 
 <Seo title={seo.location.title} description={seo.location.description} />
@@ -25,7 +35,7 @@
 <PageHeader
 	title={location.title}
 	crumb="Location"
-	image="/assets/images/villa/gallery-7.jpg"
+	image={images.locationHeader}
 	lead={location.heroLead}
 	stats={heroStats}
 	statsLabel="Location highlights"

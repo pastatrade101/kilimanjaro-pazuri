@@ -204,6 +204,8 @@ export const location = {
 	mapNote:
 		'This map shows the Moshi area. Contact the villa before travel for the precise arrival pin and local directions.',
 	mapCta: 'Open Moshi map',
+	/** What the embedded map points at. Replace with the exact address once confirmed. */
+	mapQuery: 'Moshi, Kilimanjaro Region, Tanzania',
 	distancesTitle: 'Useful reference points',
 	distancesIntro:
 		'Use these approximate road distances as a starting point when planning your arrival or a day beyond the villa.',
@@ -322,3 +324,25 @@ export const preLaunchChecklist = [
 	'Official logo files',
 	'The exact spelling of the Seluhi room name'
 ];
+
+/**
+ * Every photograph the pages place themselves, gathered here so each one is
+ * editable — and replaceable by upload — from the admin area.
+ */
+export const images = {
+	homeHeroOne: '/assets/images/villa/hero-garden-suite.jpg',
+	homeHeroTwo: '/assets/images/villa/room-5.jpg',
+	homeHeroThree: '/assets/images/villa/dining.jpg',
+	homeHeroFour: '/assets/images/villa/gallery-6.jpg',
+	homeWelcome: '/assets/images/villa/room-3.jpg',
+	roomsHeader: '/assets/images/villa/hero-garden-suite.jpg',
+	aboutHeader: '/assets/images/villa/dining.jpg',
+	aboutOne: '/assets/images/villa/hero-garden-suite.jpg',
+	aboutTwo: '/assets/images/villa/kitchen.jpg',
+	amenitiesHeader: '/assets/images/villa/dining.jpg',
+	galleryHeader: '/assets/images/villa/room-5.jpg',
+	locationHeader: '/assets/images/villa/gallery-7.jpg',
+	contactHeader: '/assets/images/villa/gallery-1.jpg',
+	contactAside: '/assets/images/villa/hero-garden-suite.jpg',
+	shareCard: '/assets/images/villa/hero-garden-suite.jpg'
+};

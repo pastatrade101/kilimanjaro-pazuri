@@ -16,7 +16,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV BODY_SIZE_LIMIT=1M
+ENV BODY_SIZE_LIMIT=8M
 # The enquiry rate limiter needs the real client address, not Caddy's.
 ENV ADDRESS_HEADER=X-Forwarded-For
 ENV XFF_DEPTH=1

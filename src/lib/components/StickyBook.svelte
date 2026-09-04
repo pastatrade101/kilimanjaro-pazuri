@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { actions } from '$lib/content/site';
+	import { page } from '$app/state';
+
+	const actions = $derived(page.data.content.actions);
 </script>
 
 <!-- On mobile the WhatsApp button stays visible as a sticky action. -->

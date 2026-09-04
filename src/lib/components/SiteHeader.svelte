@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { site, nav, actions } from '$lib/content/site';
+	const content = $derived(page.data.content);
+	const site = $derived(content.site);
+	const nav = $derived(content.nav);
+	const actions = $derived(content.actions);
 	import { openDrawer } from '$lib/state/ui.svelte';
 
 	let scrolled = $state(false);

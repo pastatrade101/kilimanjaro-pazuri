@@ -2,7 +2,6 @@
 	import { enhance } from '$app/forms';
 	import Seo from '$lib/components/Seo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { contact, site, actions } from '$lib/content/site';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -10,16 +9,22 @@
 	const issues = $derived(form?.issues ?? {});
 	const values = $derived(form?.values ?? {});
 
-	const heroStats = [
+	const content = $derived(data.content);
+	const images = $derived(content.images);
+	const contact = $derived(content.contact);
+	const site = $derived(content.site);
+	const actions = $derived(content.actions);
+
+	const heroStats = $derived([
 		{ label: 'Booking', value: 'Direct with the villa' },
 		{ label: 'Contact', value: 'WhatsApp, call or email' },
 		{ label: 'Location', value: site.location }
-	];
+	]);
 
-	const heroActions = [
+	const heroActions = $derived([
 		{ label: actions.whatsapp.label, href: actions.whatsapp.href, external: true },
 		{ label: actions.call.label, href: actions.call.href }
-	];
+	]);
 </script>
 
 <Seo title="Contact | {site.name} Moshi" description={contact.intro} />
@@ -27,7 +32,7 @@
 <PageHeader
 	title="Let’s plan your stay in Moshi"
 	crumb="Contact"
-	image="/assets/images/villa/gallery-1.jpg"
+	image={images.contactHeader}
 	lead={contact.heroLead}
 	stats={heroStats}
 	statsLabel="Contact details"
@@ -39,7 +44,7 @@
 		<div class="kp-contact-layout">
 			<aside class="kp-contact-direct wow fadeInUp" data-wow-duration="1200ms">
 				<div class="kp-contact-direct__media">
-					<img src="/assets/images/villa/hero-garden-suite.jpg" alt="A prepared guest room at Kilimanjaro Pazuri" loading="lazy" />
+					<img src={images.contactAside} alt="A prepared guest room at Kilimanjaro Pazuri" loading="lazy" />
 					<div class="kp-contact-direct__place">
 						<span>Find us in</span>
 						<strong>{site.location}</strong>

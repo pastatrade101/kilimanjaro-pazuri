@@ -2,7 +2,8 @@ import postgres, { type Sql } from 'postgres';
 import { env } from '$env/dynamic/private';
 // Inlined at build time, so the bundled server carries the schema with it and
 // there is still exactly one copy of it — the file the Supabase CLI applies.
-import migration from '../../../supabase/migrations/0001_init.sql?raw';
+import schema0001 from '../../../supabase/migrations/0001_init.sql?raw';
+import schema0002 from '../../../supabase/migrations/0002_content.sql?raw';
 
 /**
  * Nothing connects and nothing throws when this module is imported: the build
@@ -107,7 +108,8 @@ const seedGallery = [
  * unique columns, so they fill an empty project and then do nothing.
  */
 async function migrate(sql: Sql) {
-	await sql.unsafe(migration);
+	await sql.unsafe(schema0001);
+	await sql.unsafe(schema0002);
 
 	// postgres.js builds the multi-row VALUES list from these objects, so the
 	// column list and the values cannot drift apart.
@@ -131,6 +133,7 @@ async function migrate(sql: Sql) {
 		INSERT INTO gallery_images ${sql(gallery, 'src', 'alt', 'grouping', 'position')}
 		ON CONFLICT (src) DO NOTHING
 	`;
+
 }
 
 let client: Sql | null = null;

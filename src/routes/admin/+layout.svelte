@@ -7,7 +7,8 @@
 
 	const links = [
 		{ href: '/admin', label: 'Enquiries' },
-		{ href: '/admin/rooms', label: 'Rooms and rates' }
+		{ href: '/admin/rooms', label: 'Rooms and rates' },
+		{ href: '/admin/content', label: 'Pages and copy' }
 	];
 </script>
 
@@ -31,14 +32,14 @@
 					{#each links as link (link.href)}
 						<a
 							href={link.href}
-							class="zoomvilla-btn {page.url.pathname === link.href ? '' : 'zoomvilla-btn--border'}"
+							class="kp-btn {page.url.pathname === link.href || (link.href !== '/admin' && page.url.pathname.startsWith(link.href)) ? 'kp-btn--primary' : 'kp-btn--outline'}"
 						>
 							{link.label}
 						</a>
 					{/each}
-					<a href="/" class="zoomvilla-btn zoomvilla-btn--border">View site</a>
+					<a href="/" class="kp-btn kp-btn--outline">View site</a>
 					<form method="POST" action="/admin/logout">
-						<button type="submit" class="zoomvilla-btn zoomvilla-btn--border">Sign out</button>
+						<button type="submit" class="kp-btn kp-btn--outline">Sign out</button>
 					</form>
 				</div>
 			{/if}
