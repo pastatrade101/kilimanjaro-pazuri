@@ -3,109 +3,94 @@
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	let adding = $state(false);
 </script>
 
-<h2 class="kp-amenity-group__title">Rooms and rates</h2>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+	<h2 class="kp-amenity-group__title mb-0" style="border:0;padding:0;">Rooms and rates</h2>
+	<button type="button" class="kp-btn kp-btn--primary" onclick={() => (adding = !adding)}>
+		{adding ? 'Cancel' : 'Add a room'}
+	</button>
+</div>
+
 <p class="kp-form__note mb-4">
 	What you save here is what guests see. Occupancy and bed type stay hidden on the site until you
-	fill them in — items 3 and 4 on the pre-launch checklist. The web address of each room does not
-	change when you rename it.
+	fill them in — items 3 and 4 on the pre-launch checklist.
 </p>
 
 {#if form?.error}
 	<div class="kp-alert kp-alert--bad" role="alert">{form.error}</div>
 {/if}
-{#if form?.saved}
-	<div class="kp-alert kp-alert--ok" role="status">Saved.</div>
+{#if form?.added}
+	<div class="kp-alert kp-alert--ok" role="status">{form.added} added.</div>
+{/if}
+{#if form?.removed}
+	<div class="kp-alert kp-alert--ok" role="status">{form.removed} removed.</div>
 {/if}
 
-<div class="row gutter-y-30">
-	{#each data.rooms as room (room.slug)}
-		<div class="col-lg-6">
-			<div class="kp-rates">
-				<div class="py-4">
-					<div class="d-flex align-items-center gap-3 mb-3">
-						<img
-							src={room.image}
-							alt={room.name}
-							width="80"
-							height="60"
-							style="object-fit:cover;"
-						/>
-						<div>
-							<h3 class="kp-rate__name mb-0">{room.name}</h3>
-							<p class="kp-rate__summary">/rooms/{room.slug}</p>
-						</div>
-					</div>
-
-					<form method="POST" use:enhance class="kp-form">
-						<input type="hidden" name="slug" value={room.slug} />
-
-						<div class="kp-field">
-							<label for="name-{room.slug}">Room name</label>
-							<input
-								id="name-{room.slug}"
-								type="text"
-								name="name"
-								value={room.name}
-								required
-								minlength="2"
-								maxlength="80"
-							/>
-						</div>
-
-						<div class="kp-field-row">
-							<div class="kp-field">
-								<label for="rate-{room.slug}">Rate, US dollars per night</label>
-								<input
-									id="rate-{room.slug}"
-									type="number"
-									name="rate_usd"
-									min="0"
-									value={room.rate_usd}
-									required
-								/>
-							</div>
-							<div class="kp-field">
-								<label for="guests-{room.slug}">Maximum guests</label>
-								<input id="guests-{room.slug}" type="text" name="guests" value={room.guests} />
-							</div>
-						</div>
-
-						<div class="kp-field-row">
-							<div class="kp-field">
-								<label for="bed-{room.slug}">Bed</label>
-								<input id="bed-{room.slug}" type="text" name="bed" value={room.bed} />
-							</div>
-							<div class="kp-field">
-								<label for="bathroom-{room.slug}">Bathroom</label>
-								<input
-									id="bathroom-{room.slug}"
-									type="text"
-									name="bathroom"
-									value={room.bathroom}
-								/>
-							</div>
-						</div>
-
-						<div class="kp-field">
-							<label class="kp-check" for="available-{room.slug}">
-								<input
-									id="available-{room.slug}"
-									type="checkbox"
-									name="is_available"
-									checked={room.is_available}
-								/>
-								<span>Available for booking</span>
-							</label>
-						</div>
-
-						<button type="submit" class="kp-btn kp-btn--primary kp-booking__submit">
-							Save {room.name}
-						</button>
-					</form>
+{#if adding}
+	<section class="kp-editor-section">
+		<h3 class="kp-editor-section__title">A new room</h3>
+		<form method="POST" action="?/add" enctype="multipart/form-data" use:enhance class="kp-form">
+			<div class="kp-field-row">
+				<div class="kp-field">
+					<label for="new-name">Room name</label>
+					<input id="new-name" type="text" name="name" required />
 				</div>
+				<div class="kp-field">
+					<label for="new-slug">Web address</label>
+					<input id="new-slug" type="text" name="slug" placeholder="marangu" required />
+					<span class="kp-form__note">Becomes /rooms/… and cannot be changed later.</span>
+				</div>
+			</div>
+			<div class="kp-field">
+				<label for="new-summary">One sentence about the room</label>
+				<textarea id="new-summary" name="summary" rows="2" required></textarea>
+			</div>
+			<div class="kp-field-row">
+				<div class="kp-field">
+					<label for="new-rate">Rate, US dollars per night</label>
+					<input id="new-rate" type="number" name="rate_usd" min="0" value="45" required />
+				</div>
+				<div class="kp-field">
+					<label for="new-image">Photograph</label>
+					<input id="new-image" type="file" name="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+				</div>
+			</div>
+			<button type="submit" class="kp-btn kp-btn--primary">Add room</button>
+		</form>
+	</section>
+{/if}
+
+<section class="kp-editor-section">
+	<h3 class="kp-editor-section__title">{data.rooms.length} rooms</h3>
+
+	{#each data.rooms as room (room.slug)}
+		<div class="kp-room-row">
+			<img src={room.image} alt={room.name} />
+
+			<div class="kp-room-row__detail">
+				<h4>{room.name}</h4>
+				<p>/rooms/{room.slug} · ${room.rate_usd} per night</p>
+				<span class="kp-badge {room.is_available ? '' : 'kp-badge--muted'}">
+					{room.is_available ? 'Available' : 'Not bookable'}
+				</span>
+			</div>
+
+			<div class="kp-editor-list__controls">
+				<a class="kp-btn kp-btn--outline" href="/admin/rooms/{room.slug}">Edit</a>
+				<form
+					method="POST"
+					action="?/remove"
+					use:enhance={({ cancel }) => {
+						if (!confirm(`Remove ${room.name}? Its page will stop existing.`)) cancel();
+					}}
+				>
+					<input type="hidden" name="slug" value={room.slug} />
+					<button type="submit" class="kp-editor-list__remove">Remove</button>
+				</form>
 			</div>
 		</div>
 	{/each}
-</div>
+</section>

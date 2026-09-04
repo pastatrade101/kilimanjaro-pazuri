@@ -8,7 +8,8 @@
 	const links = [
 		{ href: '/admin', label: 'Enquiries' },
 		{ href: '/admin/rooms', label: 'Rooms and rates' },
-		{ href: '/admin/content', label: 'Pages and copy' }
+		{ href: '/admin/content', label: 'Pages and copy' },
+		{ href: '/admin/gallery', label: 'Gallery' }
 	];
 </script>
 

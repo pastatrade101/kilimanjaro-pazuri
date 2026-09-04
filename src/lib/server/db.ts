@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 // there is still exactly one copy of it — the file the Supabase CLI applies.
 import schema0001 from '../../../supabase/migrations/0001_init.sql?raw';
 import schema0002 from '../../../supabase/migrations/0002_content.sql?raw';
+import schema0003 from '../../../supabase/migrations/0003_lists.sql?raw';
 
 /**
  * Nothing connects and nothing throws when this module is imported: the build
@@ -110,6 +111,7 @@ const seedGallery = [
 async function migrate(sql: Sql) {
 	await sql.unsafe(schema0001);
 	await sql.unsafe(schema0002);
+	await sql.unsafe(schema0003);
 
 	// postgres.js builds the multi-row VALUES list from these objects, so the
 	// column list and the values cannot drift apart.

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { ICONS, iconLabel } from '$lib/content/icons';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -25,6 +26,9 @@
 {#if form?.error}
 	<div class="kp-alert kp-alert--bad" role="alert">{form.error}</div>
 {/if}
+{#if form?.added || form?.removed || form?.moved}
+	<div class="kp-alert kp-alert--ok" role="status">List updated.</div>
+{/if}
 {#if form?.saved !== undefined}
 	<div class="kp-alert kp-alert--ok" role="status">
 		Saved. {form.saved} field{form.saved === 1 ? '' : 's'} changed{form.reverted
@@ -33,7 +37,7 @@
 	</div>
 {/if}
 
-<form method="POST" enctype="multipart/form-data" use:enhance class="kp-form">
+<form method="POST" action="?/save" enctype="multipart/form-data" use:enhance class="kp-form">
 	{#each data.sections as section (section.title)}
 		<section class="kp-editor-section">
 			<h3 class="kp-editor-section__title">{section.title}</h3>
@@ -42,7 +46,24 @@
 				<div class="kp-field">
 					<label for={item.key}>{item.label}</label>
 
-					{#if item.kind === 'image'}
+					{#if item.kind === 'icon'}
+						<div class="kp-icons" role="radiogroup" aria-labelledby={item.key}>
+							{#each ICONS as icon (icon)}
+								<label class="kp-icons__option">
+									<input
+										type="radio"
+										name={item.key}
+										value={icon}
+										checked={item.value === icon}
+									/>
+									<span class="kp-icons__swatch">
+										<i class={icon} aria-hidden="true"></i>
+										<span>{iconLabel(icon)}</span>
+									</span>
+								</label>
+							{/each}
+						</div>
+					{:else if item.kind === 'image'}
 						<div class="kp-editor-image">
 							<img src={previews[item.key] ?? item.value} alt="" />
 							<div class="kp-editor-image__controls">
@@ -88,3 +109,53 @@
 		</a>
 	</div>
 </form>
+
+{#each data.lists as list (list.path)}
+	<section class="kp-editor-section kp-editor-list">
+		<h3 class="kp-editor-section__title">{list.label}</h3>
+		<p class="kp-form__note">
+			{list.rows.length} item{list.rows.length === 1 ? '' : 's'}. Wording is edited above; add,
+			remove and reorder them here.
+		</p>
+
+		<ol class="kp-editor-list__items">
+			{#each list.rows as row (row.index)}
+				<li>
+					<span class="kp-editor-list__text">
+						{Object.values(row.values).find((v) => v.trim().length > 0) ?? '(empty)'}
+					</span>
+					<span class="kp-editor-list__controls">
+						<form method="POST" action="?/move" use:enhance>
+							<input type="hidden" name="path" value={list.path} />
+							<input type="hidden" name="index" value={row.index} />
+							<input type="hidden" name="direction" value="up" />
+							<button type="submit" aria-label="Move up" disabled={row.index === 0}>↑</button>
+						</form>
+						<form method="POST" action="?/move" use:enhance>
+							<input type="hidden" name="path" value={list.path} />
+							<input type="hidden" name="index" value={row.index} />
+							<input type="hidden" name="direction" value="down" />
+							<button
+								type="submit"
+								aria-label="Move down"
+								disabled={row.index === list.rows.length - 1}>↓</button
+							>
+						</form>
+						<form method="POST" action="?/remove" use:enhance>
+							<input type="hidden" name="path" value={list.path} />
+							<input type="hidden" name="index" value={row.index} />
+							<button type="submit" class="kp-editor-list__remove" aria-label="Remove">
+								Remove
+							</button>
+						</form>
+					</span>
+				</li>
+			{/each}
+		</ol>
+
+		<form method="POST" action="?/add" use:enhance>
+			<input type="hidden" name="path" value={list.path} />
+			<button type="submit" class="kp-btn kp-btn--outline">Add an item</button>
+		</form>
+	</section>
+{/each}

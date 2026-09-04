@@ -90,6 +90,8 @@ export async function updateRoom(
 	slug: string,
 	fields: {
 		name: string;
+		summary: string;
+		image: string;
 		rate_usd: number;
 		guests: string;
 		bed: string;
@@ -104,6 +106,8 @@ export async function updateRoom(
 	return sql`
 		UPDATE rooms
 		   SET name         = ${fields.name},
+		       summary      = ${fields.summary},
+		       image        = ${fields.image},
 		       rate_usd     = ${fields.rate_usd},
 		       guests       = ${fields.guests},
 		       bed          = ${fields.bed},
@@ -189,4 +193,76 @@ export async function enquiryCounts(): Promise<Record<string, number>> {
 	const counts: Record<string, number> = { new: 0, read: 0, replied: 0, archived: 0 };
 	for (const row of rows) counts[row.status] = Number(row.n);
 	return counts;
+}
+
+export async function createGalleryImage(input: {
+	src: string;
+	alt: string;
+	grouping: string;
+}): Promise<number> {
+	const sql = await dbReady();
+	const [row] = await sql<{ id: string }[]>`
+		INSERT INTO gallery_images (src, alt, grouping, position)
+		VALUES (
+			${input.src}, ${input.alt}, ${input.grouping},
+			COALESCE((SELECT MAX(position) + 1 FROM gallery_images), 0)
+		)
+		ON CONFLICT (src) DO UPDATE SET alt = EXCLUDED.alt, grouping = EXCLUDED.grouping
+		RETURNING id
+	`;
+	return Number(row.id);
+}
+
+export async function updateGalleryImage(
+	id: number,
+	fields: { alt: string; grouping: string }
+) {
+	const sql = await dbReady();
+	return sql`
+		UPDATE gallery_images
+		   SET alt = ${fields.alt}, grouping = ${fields.grouping}
+		 WHERE id = ${id}
+	`;
+}
+
+export async function deleteGalleryImage(id: number) {
+	const sql = await dbReady();
+	return sql`DELETE FROM gallery_images WHERE id = ${id}`;
+}
+
+/** Swaps an image with its neighbour, so the order is the owner's to set. */
+export async function moveGalleryImage(id: number, direction: 'up' | 'down') {
+	const sql = await dbReady();
+	const images = await listGallery();
+	const index = images.findIndex((image) => image.id === id);
+	const target = index + (direction === 'up' ? -1 : 1);
+	if (index < 0 || target < 0 || target >= images.length) return;
+
+	await sql.begin(async (tx) => {
+		await tx`UPDATE gallery_images SET position = ${images[target].position} WHERE id = ${images[index].id}`;
+		await tx`UPDATE gallery_images SET position = ${images[index].position} WHERE id = ${images[target].id}`;
+	});
+}
+
+export async function createRoom(input: {
+	slug: string;
+	name: string;
+	summary: string;
+	rate_usd: number;
+	image: string;
+}): Promise<void> {
+	const sql = await dbReady();
+	await sql`
+		INSERT INTO rooms (slug, name, summary, rate_usd, image, position)
+		VALUES (
+			${input.slug}, ${input.name}, ${input.summary}, ${input.rate_usd}, ${input.image},
+			COALESCE((SELECT MAX(position) + 1 FROM rooms), 0)
+		)
+	`;
+}
+
+export async function deleteRoom(slug: string) {
+	const sql = await dbReady();
+	// Past enquiries keep the slug as plain text, so their record survives.
+	return sql`DELETE FROM rooms WHERE slug = ${slug}`;
 }

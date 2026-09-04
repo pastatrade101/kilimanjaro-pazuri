@@ -1,7 +1,15 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { editableFields, saveContent, getContent } from '$lib/server/content';
-import { labelFor, flatten } from '$lib/content/paths';
+import {
+	editableFields,
+	editableFieldsLive,
+	saveContent,
+	getContent,
+	editableLists,
+	saveList,
+	currentList
+} from '$lib/server/content';
+import { labelFor, flatten, readPath } from '$lib/content/paths';
 import { storeUpload, MediaError } from '$lib/server/media';
 
 /** Groups a page's fields the way the copy itself is organised. */
@@ -21,11 +29,14 @@ function humanise(word: string): string {
 }
 
 export const load: PageServerLoad = async ({ params }) => {
-	const fields = editableFields().filter((field) => field.key.startsWith(`${params.page}.`));
+	const fields = (await editableFieldsLive()).filter((field) =>
+		field.key.startsWith(`${params.page}.`)
+	);
 	if (fields.length === 0) error(404, 'No such page.');
 
 	// Show what the site is actually showing, not the deck's original.
-	const live = new Map(flatten(await getContent()).map((f) => [f.key, f.value]));
+	const content = await getContent();
+	const live = new Map(flatten(content).map((f) => [f.key, f.value]));
 
 	const sections = new Map<string, { key: string; label: string; kind: string; value: string }[]>();
 	for (const field of fields) {
@@ -40,17 +51,39 @@ export const load: PageServerLoad = async ({ params }) => {
 		sections.set(section, bucket);
 	}
 
+	// The repeatable parts of this page, which can be grown or trimmed.
+	const shapes = await editableLists(params.page);
+	const lists = shapes.map((shape) => {
+		const items = (readPath(content, shape.path) ?? []) as unknown[];
+		return {
+			path: shape.path,
+			label: shape.label,
+			fields: shape.fields,
+			rows: items.map((item, index) =>
+				shape.fields
+					? {
+							index,
+							values: Object.fromEntries(
+								shape.fields.map((f) => [f, String((item as Record<string, unknown>)[f] ?? '')])
+							)
+						}
+					: { index, values: { value: String(item) } }
+			)
+		};
+	});
+
 	return {
 		page: params.page,
-		sections: [...sections].map(([title, items]) => ({ title, items }))
+		sections: [...sections].map(([title, items]) => ({ title, items })),
+		lists
 	};
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	save: async ({ request, params }) => {
 		const data = await request.formData();
 		const allowed = new Set(
-			editableFields()
+			(await editableFieldsLive())
 				.filter((field) => field.key.startsWith(`${params.page}.`))
 				.map((field) => field.key)
 		);
@@ -88,5 +121,70 @@ export const actions: Actions = {
 
 		const result = await saveContent(changes);
 		return { saved: result.saved, reverted: result.reverted };
+	},
+
+	/** Appends an empty item, ready to be filled in. */
+	add: async ({ request, params }) => {
+		const data = await request.formData();
+		const path = String(data.get('path') ?? '');
+		if (!(await allowedList(params.page, path))) return fail(400, { error: 'Unknown list.' });
+
+		const items = await currentList(path);
+		const template = items[0];
+
+		const blank =
+			template && typeof template === 'object' && !Array.isArray(template)
+				? Object.fromEntries(
+						Object.entries(template as Record<string, unknown>).map(([k, v]) => [
+							k,
+							typeof v === 'string' ? '' : v
+						])
+					)
+				: '';
+
+		items.push(blank);
+		await saveList(path, items);
+		return { added: path };
+	},
+
+	remove: async ({ request, params }) => {
+		const data = await request.formData();
+		const path = String(data.get('path') ?? '');
+		const index = Number(data.get('index'));
+		if (!(await allowedList(params.page, path))) return fail(400, { error: 'Unknown list.' });
+
+		const items = await currentList(path);
+		if (!Number.isInteger(index) || index < 0 || index >= items.length) {
+			return fail(400, { error: 'That item is no longer there.' });
+		}
+		if (items.length === 1) {
+			return fail(400, { error: 'A list needs at least one item. Edit this one instead.' });
+		}
+
+		items.splice(index, 1);
+		await saveList(path, items);
+		return { removed: path };
+	},
+
+	move: async ({ request, params }) => {
+		const data = await request.formData();
+		const path = String(data.get('path') ?? '');
+		const index = Number(data.get('index'));
+		const delta = data.get('direction') === 'up' ? -1 : 1;
+		if (!(await allowedList(params.page, path))) return fail(400, { error: 'Unknown list.' });
+
+		const items = await currentList(path);
+		const target = index + delta;
+		if (target < 0 || target >= items.length) return { moved: path };
+
+		[items[index], items[target]] = [items[target], items[index]];
+		await saveList(path, items);
+		return { moved: path };
 	}
 };
+
+/** Only lists belonging to the page being edited may be changed from it. */
+async function allowedList(page: string, path: string): Promise<boolean> {
+	const shapes = await editableLists(page);
+	return shapes.some((shape) => shape.path === path);
+}
