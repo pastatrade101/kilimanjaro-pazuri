@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getRoom, listAvailableRooms, createEnquiry } from '$lib/server/repo';
+import { getRoom, listAvailableRooms, createEnquiry, listRoomImages } from '$lib/server/repo';
 import { validateEnquiry, type Issues } from '$lib/server/validate';
 import { limitEnquiries } from '$lib/server/ratelimit';
 
@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const others = (await listAvailableRooms())
 		.filter((r) => r.slug !== room.slug)
 		.slice(0, 3);
-	return { room, others };
+	return { room, others, images: await listRoomImages(params.slug) };
 };
 
 export const actions: Actions = {

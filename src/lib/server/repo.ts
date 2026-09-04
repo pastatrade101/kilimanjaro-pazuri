@@ -14,6 +14,15 @@ export type Room = {
 	position: number;
 };
 
+export type RoomImage = {
+	id: number;
+	room_slug: string;
+	src: string;
+	alt: string;
+	position: number;
+	is_featured: boolean;
+};
+
 export type Enquiry = {
 	id: number;
 	kind: 'booking' | 'contact';
@@ -265,4 +274,115 @@ export async function deleteRoom(slug: string) {
 	const sql = await dbReady();
 	// Past enquiries keep the slug as plain text, so their record survives.
 	return sql`DELETE FROM rooms WHERE slug = ${slug}`;
+}
+
+export async function listRoomImages(slug: string): Promise<RoomImage[]> {
+	const sql = await dbReady();
+	const rows = await sql`
+		SELECT * FROM room_images
+		 WHERE room_slug = ${slug}
+		 ORDER BY is_featured DESC, position ASC, id ASC
+	`;
+	return rows.map((row) => ({ ...(row as unknown as RoomImage), id: Number(row.id) }));
+}
+
+/** Every room's photographs in one query, for the listing pages. */
+export async function imagesByRoom(): Promise<Map<string, RoomImage[]>> {
+	const sql = await dbReady();
+	const rows = await sql`
+		SELECT * FROM room_images ORDER BY is_featured DESC, position ASC, id ASC
+	`;
+	const out = new Map<string, RoomImage[]>();
+	for (const row of rows) {
+		const image = { ...(row as unknown as RoomImage), id: Number(row.id) };
+		const bucket = out.get(image.room_slug) ?? [];
+		bucket.push(image);
+		out.set(image.room_slug, bucket);
+	}
+	return out;
+}
+
+export async function addRoomImage(slug: string, src: string, alt: string) {
+	const sql = await dbReady();
+	const [existing] = await sql<{ n: number }[]>`
+		SELECT count(*)::int AS n FROM room_images WHERE room_slug = ${slug}
+	`;
+	const first = Number(existing.n) === 0;
+
+	await sql`
+		INSERT INTO room_images (room_slug, src, alt, position, is_featured)
+		VALUES (
+			${slug}, ${src}, ${alt},
+			COALESCE((SELECT MAX(position) + 1 FROM room_images WHERE room_slug = ${slug}), 0),
+			${first}
+		)
+	`;
+
+	// The first photograph a room has is the one its card shows.
+	if (first) await sql`UPDATE rooms SET image = ${src} WHERE slug = ${slug}`;
+}
+
+export async function deleteRoomImage(id: number) {
+	const sql = await dbReady();
+	const [image] = await sql<{ room_slug: string; is_featured: boolean }[]>`
+		SELECT room_slug, is_featured FROM room_images WHERE id = ${id}
+	`;
+	if (!image) return;
+
+	await sql`DELETE FROM room_images WHERE id = ${id}`;
+
+	// A room must always have something to show on its card.
+	if (image.is_featured) {
+		const [next] = await sql<{ id: string; src: string }[]>`
+			SELECT id, src FROM room_images
+			 WHERE room_slug = ${image.room_slug}
+			 ORDER BY position ASC, id ASC LIMIT 1
+		`;
+		if (next) {
+			await sql`UPDATE room_images SET is_featured = true WHERE id = ${next.id}`;
+			await sql`UPDATE rooms SET image = ${next.src} WHERE slug = ${image.room_slug}`;
+		}
+	}
+}
+
+export async function setFeaturedRoomImage(id: number) {
+	const sql = await dbReady();
+	const [image] = await sql<{ room_slug: string; src: string }[]>`
+		SELECT room_slug, src FROM room_images WHERE id = ${id}
+	`;
+	if (!image) return;
+
+	// Clear first: the database allows only one featured photograph per room.
+	await sql.begin(async (tx) => {
+		await tx`UPDATE room_images SET is_featured = false WHERE room_slug = ${image.room_slug}`;
+		await tx`UPDATE room_images SET is_featured = true WHERE id = ${id}`;
+		await tx`UPDATE rooms SET image = ${image.src} WHERE slug = ${image.room_slug}`;
+	});
+}
+
+export async function updateRoomImageAlt(id: number, alt: string) {
+	const sql = await dbReady();
+	return sql`UPDATE room_images SET alt = ${alt} WHERE id = ${id}`;
+}
+
+export async function moveRoomImage(id: number, direction: 'up' | 'down') {
+	const sql = await dbReady();
+	const [image] = await sql<{ room_slug: string }[]>`
+		SELECT room_slug FROM room_images WHERE id = ${id}
+	`;
+	if (!image) return;
+
+	const ordered = await sql<{ id: string; position: number }[]>`
+		SELECT id, position FROM room_images
+		 WHERE room_slug = ${image.room_slug}
+		 ORDER BY position ASC, id ASC
+	`;
+	const index = ordered.findIndex((row) => Number(row.id) === id);
+	const target = index + (direction === 'up' ? -1 : 1);
+	if (index < 0 || target < 0 || target >= ordered.length) return;
+
+	await sql.begin(async (tx) => {
+		await tx`UPDATE room_images SET position = ${ordered[target].position} WHERE id = ${ordered[index].id}`;
+		await tx`UPDATE room_images SET position = ${ordered[index].position} WHERE id = ${ordered[target].id}`;
+	});
 }

@@ -13,6 +13,12 @@ const ALLOWED = new Map([
 
 export const MAX_BYTES = 6 * 1024 * 1024;
 
+/**
+ * Room photographs are held to 1 MB. A room page shows several at once, and
+ * most guests arrive on a phone over a Tanzanian mobile connection.
+ */
+export const ROOM_MAX_BYTES = 1024 * 1024;
+
 export type StoredMedia = {
 	id: string;
 	filename: string;
@@ -28,14 +34,19 @@ export class MediaError extends Error {}
  * Images live in Postgres so the server keeps no state of its own; there are
  * only ever a few dozen, and they are served with a long cache lifetime.
  */
-export async function storeUpload(file: File): Promise<string> {
+export async function storeUpload(file: File, maxBytes = MAX_BYTES): Promise<string> {
 	const extension = ALLOWED.get(file.type);
 	if (!extension) {
 		throw new MediaError('That file type is not a photograph the site can show.');
 	}
 	if (file.size === 0) throw new MediaError('That file was empty.');
-	if (file.size > MAX_BYTES) {
-		throw new MediaError(`Photographs must be under ${Math.round(MAX_BYTES / 1024 / 1024)} MB.`);
+	if (file.size > maxBytes) {
+		const limit =
+			maxBytes >= 1024 * 1024
+				? `${Math.round(maxBytes / 1024 / 1024)} MB`
+				: `${Math.round(maxBytes / 1024)} KB`;
+		const was = (file.size / 1024 / 1024).toFixed(1);
+		throw new MediaError(`Photographs must be under ${limit}. That one is ${was} MB.`);
 	}
 
 	const id = `${randomBytes(8).toString('hex')}.${extension}`;

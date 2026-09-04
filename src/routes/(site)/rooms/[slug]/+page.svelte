@@ -9,6 +9,7 @@
 
 	const content = $derived(data.content);
 	const copy = $derived(content.rooms);
+	const images = $derived(data.images ?? []);
 	const site = $derived(content.site);
 	const actions = $derived(content.actions);
 
@@ -44,6 +45,17 @@
 				<div class="kp-room__hero hover:shine wow fadeInLeft" data-wow-duration="1200ms">
 					<img src={room.image} alt={room.name} width="900" height="600" />
 				</div>
+
+				{#if images.length > 1}
+					<!-- The rest of the room, beyond the one its card shows. -->
+					<div class="kp-room__gallery wow fadeInUp" data-wow-duration="1200ms">
+						{#each images.filter((image) => image.src !== room.image) as image (image.id)}
+							<a href={image.src} class="img-popup kp-room__gallery__item" data-group="room">
+								<img src={image.src} alt={image.alt || room.name} loading="lazy" />
+							</a>
+						{/each}
+					</div>
+				{/if}
 
 				<div class="sec-title text-start mt-5">
 					<div class="sec-title__top justify-content-start">
