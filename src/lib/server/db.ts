@@ -109,23 +109,26 @@ const seedGallery = [
 async function migrate(sql: Sql) {
 	await sql.unsafe(migration);
 
+	// postgres.js builds the multi-row VALUES list from these objects, so the
+	// column list and the values cannot drift apart.
+	const rooms = seedRooms.map((room, position) => ({
+		slug: room.slug,
+		name: room.name,
+		summary: room.summary,
+		rate_usd: room.rate,
+		image: room.image,
+		position
+	}));
+
 	await sql`
-		INSERT INTO rooms (slug, name, summary, rate_usd, image, position)
-		SELECT r.slug, r.name, r.summary, r.rate, r.image, r.position
-		  FROM json_to_recordset(${JSON.stringify(
-				seedRooms.map((room, position) => ({ ...room, position }))
-			)}::json)
-		    AS r(slug text, name text, summary text, rate int, image text, position int)
+		INSERT INTO rooms ${sql(rooms, 'slug', 'name', 'summary', 'rate_usd', 'image', 'position')}
 		ON CONFLICT (slug) DO NOTHING
 	`;
 
+	const gallery = seedGallery.map((image, position) => ({ ...image, position }));
+
 	await sql`
-		INSERT INTO gallery_images (src, alt, grouping, position)
-		SELECT g.src, g.alt, g.grouping, g.position
-		  FROM json_to_recordset(${JSON.stringify(
-				seedGallery.map((image, position) => ({ ...image, position }))
-			)}::json)
-		    AS g(src text, alt text, grouping text, position int)
+		INSERT INTO gallery_images ${sql(gallery, 'src', 'alt', 'grouping', 'position')}
 		ON CONFLICT (src) DO NOTHING
 	`;
 }

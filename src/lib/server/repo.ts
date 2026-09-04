@@ -39,6 +39,15 @@ export type GalleryImage = {
 
 export type EnquiryStatus = Enquiry['status'];
 
+/**
+ * `bigint` arrives as a string, because Postgres allows values a JS number
+ * cannot hold. These ids are small and the API contract says number, so they
+ * are narrowed here rather than leaking `"1"` into JSON.
+ */
+function toRoom(row: Record<string, unknown>): Room {
+	return { ...(row as unknown as Room), id: Number(row.id) };
+}
+
 /** Dates come back as `Date`; the pages and the API want plain ISO days. */
 function isoDay(value: Date | string | null): string | null {
 	if (!value) return null;
@@ -49,6 +58,7 @@ function isoDay(value: Date | string | null): string | null {
 function toEnquiry(row: Record<string, unknown>): Enquiry {
 	return {
 		...(row as unknown as Enquiry),
+		id: Number(row.id),
 		check_in: isoDay(row.check_in as Date | null),
 		check_out: isoDay(row.check_out as Date | null),
 		created_at:
@@ -58,20 +68,22 @@ function toEnquiry(row: Record<string, unknown>): Enquiry {
 
 export async function listRooms(): Promise<Room[]> {
 	const sql = await dbReady();
-	return sql<Room[]>`SELECT * FROM rooms ORDER BY position ASC, id ASC`;
+	const rows = await sql`SELECT * FROM rooms ORDER BY position ASC, id ASC`;
+	return rows.map((row) => toRoom(row as Record<string, unknown>));
 }
 
 export async function listAvailableRooms(): Promise<Room[]> {
 	const sql = await dbReady();
-	return sql<Room[]>`
+	const rows = await sql`
 		SELECT * FROM rooms WHERE is_available ORDER BY position ASC, id ASC
 	`;
+	return rows.map((row) => toRoom(row as Record<string, unknown>));
 }
 
 export async function getRoom(slug: string): Promise<Room | undefined> {
 	const sql = await dbReady();
-	const [room] = await sql<Room[]>`SELECT * FROM rooms WHERE slug = ${slug}`;
-	return room;
+	const [room] = await sql`SELECT * FROM rooms WHERE slug = ${slug}`;
+	return room ? toRoom(room as Record<string, unknown>) : undefined;
 }
 
 export async function updateRoom(
@@ -119,7 +131,7 @@ export async function createEnquiry(input: {
 	message?: string | null;
 }): Promise<number> {
 	const sql = await dbReady();
-	const [row] = await sql<{ id: number }[]>`
+	const [row] = await sql<{ id: string }[]>`
 		INSERT INTO enquiries (kind, name, email, phone, room_slug, check_in, check_out, guests, message)
 		VALUES (
 			${input.kind},
@@ -134,7 +146,7 @@ export async function createEnquiry(input: {
 		)
 		RETURNING id
 	`;
-	return row.id;
+	return Number(row.id);
 }
 
 export async function listEnquiries(status?: EnquiryStatus): Promise<Enquiry[]> {
