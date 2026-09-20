@@ -20,10 +20,10 @@
 		<div class="kp-login__aside__inner">
 			<img
 				class="kp-login__mark"
-				src="/assets/images/villa/logo-light.svg"
+				src="/assets/images/villa/logo-light.png"
 				alt=""
-				width="260"
-				height="56"
+				width="92"
+				height="46"
 			/>
 			<p class="kp-login__tagline">Stay close to Kilimanjaro. Feel at home in Moshi.</p>
 		</div>
@@ -33,10 +33,10 @@
 		<div class="kp-login__form">
 			<img
 				class="kp-login__mark kp-login__mark--small"
-				src="/assets/images/villa/logo-dark.svg"
+				src="/assets/images/villa/logo.png"
 				alt="Kilimanjaro Pazuri"
-				width="240"
-				height="52"
+				width="84"
+				height="42"
 			/>
 
 			<p class="kp-login__eyebrow">Villa administration</p>

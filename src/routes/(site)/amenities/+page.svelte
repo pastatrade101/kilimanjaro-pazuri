@@ -63,7 +63,7 @@
 			</header>
 
 			<div class="kp-amenities-features">
-				{#each amenities.groups as group, i (group.title)}
+				{#each amenities.groups as group, i (i)}
 					<article
 						class="kp-amenity-feature wow fadeInUp"
 						class:kp-amenity-feature--reversed={i % 2 === 1}
@@ -84,7 +84,7 @@
 							<p class="kp-amenity-feature__description">{group.description}</p>
 
 							<ul class="kp-amenity-feature__list">
-								{#each group.items as item (item.label)}
+								{#each group.items as item, j (j)}
 									<li>
 										<span class="kp-amenity-feature__icon" aria-hidden="true">
 											<i class={item.icon}></i>

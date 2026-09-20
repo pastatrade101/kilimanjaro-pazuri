@@ -164,12 +164,12 @@
 		</div>
 
 		<div class="row gutter-y-30">
-			{#each amenities.groups as group, i (group.title)}
+			{#each amenities.groups as group, i (i)}
 				<div class="col-lg-4 wow fadeInUp" data-wow-duration="1500ms" data-wow-delay="{i * 150}ms">
 					<div class="kp-amenity-group">
 						<h4 class="kp-amenity-group__title">{group.title}</h4>
 						<ul class="kp-amenity-list">
-							{#each group.items as item (item.label)}
+							{#each group.items as item, j (j)}
 								<li><i class={item.icon}></i><span>{item.label}</span></li>
 							{/each}
 						</ul>

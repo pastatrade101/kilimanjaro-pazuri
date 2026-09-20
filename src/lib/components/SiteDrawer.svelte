@@ -50,7 +50,7 @@
 	>
 		<div class="kp-drawer__head">
 			<a href="/" class="kp-drawer__brand" aria-label={site.name}>
-				<img src="/assets/images/villa/logo-light.svg" alt={site.name} width="200" height="42" />
+				<img src="/assets/images/villa/logo-light.png" alt={site.name} width="92" height="46" />
 			</a>
 			<button class="kp-drawer__close" type="button" aria-label="Close menu" onclick={closeDrawer}>
 				<span></span><span></span>

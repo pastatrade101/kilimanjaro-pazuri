@@ -242,8 +242,11 @@ export const gallery = {
 };
 
 export const booking = {
+	tagline: 'Book direct',
 	title: 'Ready for your stay in Moshi?',
-	text: 'Choose your room and contact Kilimanjaro Pazuri directly to arrange your stay.'
+	text: 'Choose your room and contact Kilimanjaro Pazuri directly to arrange your stay.',
+	ctaWhatsapp: 'Book on WhatsApp',
+	ctaCall: 'Call the villa'
 };
 
 export const contact = {

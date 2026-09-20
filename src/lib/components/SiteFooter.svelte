@@ -17,7 +17,7 @@
 	<div class="kp-footer__inner">
 		<div class="kp-footer__brand">
 			<a href="/" aria-label={site.name}>
-				<img src="/assets/images/villa/logo-light.svg" alt={site.name} width="280" height="58" />
+				<img src="/assets/images/villa/logo-light.png" alt={site.name} width="108" height="54" />
 			</a>
 			<p class="kp-footer__line">{footer.line}</p>
 			<p class="kp-footer__text">{footer.text}</p>

@@ -23,7 +23,7 @@
 <header class="kp-header" class:kp-header--scrolled={scrolled}>
 	<div class="kp-header__inner">
 		<a class="kp-header__brand" href="/" aria-label={site.name}>
-			<img src="/assets/images/villa/logo-dark.svg" alt={site.name} width="240" height="52" />
+			<img src="/assets/images/villa/logo.png" alt={site.name} width="116" height="58" />
 		</a>
 
 		<nav class="kp-header__nav" aria-label="Main">
