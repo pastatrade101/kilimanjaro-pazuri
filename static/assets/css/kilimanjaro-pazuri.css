@@ -1206,6 +1206,15 @@ body {
 	}
 }
 
+/* Paper does not scroll, so nothing may be waiting for a scroll to appear. */
+@media print {
+	.kp-js .wow:not([data-kp-revealed]),
+	.kp-js .kp-reveal:not([data-kp-revealed]) {
+		visibility: visible;
+		opacity: 1;
+	}
+}
+
 /* ----------------------------------------------------------- welcome/intro */
 
 /*

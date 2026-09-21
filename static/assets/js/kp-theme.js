@@ -87,7 +87,7 @@
 			var percent = height > 0 ? Math.round((pos * 100) / height) : 0;
 
 			wrap.style.background =
-				'conic-gradient(var(--kp-gold) ' + percent + '%, rgba(255,255,255,0.9) ' + percent + '%)';
+				'conic-gradient(var(--kp-accent) ' + percent + '%, rgba(255,255,255,0.9) ' + percent + '%)';
 
 			wrap.classList.toggle('active', pos > 400);
 
@@ -179,18 +179,39 @@
 
 		for (var b = 0; b < boxes.length; b++) revealObserver.observe(boxes[b]);
 
-		// Safety net: nothing may stay invisible because an observer never
-		// fired. Only what is already at or above the fold is forced, so the
-		// scroll reveal below it stays intact.
-		revealFallback = setTimeout(function () {
-			var pending = document.querySelectorAll(selector);
-			for (var i = 0; i < pending.length; i++) {
-				if (pending[i].getBoundingClientRect().top < window.innerHeight) {
-					revealNow(pending[i]);
-					if (revealObserver) revealObserver.unobserve(pending[i]);
-				}
+		// An intersection is only ever reported on the way in, which leaves
+		// three ways to be stranded invisible: already in view at load,
+		// already scrolled past (a restored position, a back navigation), or
+		// brought into view by the window growing rather than by scrolling —
+		// which is what a full-page screenshot does. None of those has a
+		// crossing left to wait for, so they are revealed directly. The
+		// animation still plays; only the trigger differs.
+		revealVisible();
+		window.addEventListener('resize', onResize, { passive: true });
+
+		// Last resort, should a first frame never settle.
+		revealFallback = setTimeout(revealVisible, 3000);
+	}
+
+	/** Reveals everything at or above the fold, and everything above it. */
+	function revealVisible() {
+		var pending = document.querySelectorAll(
+			'.wow:not([data-kp-revealed]), .kp-reveal:not([data-kp-revealed])'
+		);
+		// Mirrors the observer's -6% bottom margin, so nothing fires early.
+		var edge = window.innerHeight * 0.94;
+		for (var i = 0; i < pending.length; i++) {
+			if (pending[i].getBoundingClientRect().top < edge) {
+				revealNow(pending[i]);
+				if (revealObserver) revealObserver.unobserve(pending[i]);
 			}
-		}, 3000);
+		}
+	}
+
+	var resizeTimer = null;
+	function onResize() {
+		clearTimeout(resizeTimer);
+		resizeTimer = setTimeout(revealVisible, 120);
 	}
 
 	function lightbox() {
