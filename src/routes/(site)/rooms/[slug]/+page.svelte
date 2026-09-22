@@ -23,11 +23,7 @@
 	]);
 </script>
 
-<Seo
-	title="{room.name} | {site.name} Moshi"
-	description="{room.summary} {copy.pageIntro}"
-	image={room.image}
-/>
+<Seo title="{room.name} | {site.name} Moshi" description="{room.summary} {copy.pageIntro}" />
 
 <PageHeader
 	title={room.name}
