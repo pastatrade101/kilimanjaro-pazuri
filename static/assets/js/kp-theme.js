@@ -20,6 +20,19 @@
 	// script that reveals it is actually running.
 	document.documentElement.classList.add('kp-js');
 
+	/*
+	 * That class hides every reveal until reveals() shows them, which makes a
+	 * failure anywhere upstream — a hydration error, a navigation that never
+	 * settles — the difference between an animation and an empty page. So the
+	 * hiding lifts itself if reveals() has not run shortly after load. The
+	 * content simply appears, unanimated, which is the right way to fail.
+	 */
+	var revealsRan = false;
+	setTimeout(function () {
+		if (revealsRan) return;
+		document.documentElement.classList.remove('kp-js');
+	}, 4000);
+
 	var shellReady = false;
 	var revealObserver = null;
 	var revealFallback = null;
@@ -147,6 +160,7 @@
 	 * character surgery on Svelte's DOM.
 	 */
 	function reveals() {
+		revealsRan = true;
 		var selector = '.wow:not([data-kp-revealed]), .kp-reveal:not([data-kp-revealed])';
 
 		// Release the previous page's nodes before observing this page's.

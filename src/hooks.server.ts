@@ -1,5 +1,5 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { dev } from '$app/environment';
+import { dev, version } from '$app/environment';
 import { readSession, pruneSessions } from '$lib/server/auth';
 
 // Fire and forget at boot; a failure here must not stop the server starting.
@@ -21,7 +21,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, `/admin/login?next=${encodeURIComponent(pathname)}`);
 	}
 
-	const response = await resolve(event);
+	/*
+	 * static/ is served verbatim, so the stylesheet and the theme script keep
+	 * one URL for ever and a browser has no way to learn a deploy changed them.
+	 * Stamping the build version onto the URL gives each deploy its own, which
+	 * is the only thing a cache reliably respects.
+	 */
+	const response = await resolve(event, {
+		transformPageChunk: ({ html }) => html.replaceAll('__KP_V__', version)
+	});
 
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
