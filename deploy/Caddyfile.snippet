@@ -1,10 +1,22 @@
 # Append to ~/app/config/Caddyfile on the server, then:
 #   docker exec makutano-digital-caddy caddy reload --config /etc/caddy/Caddyfile
-# Caddy obtains and renews the certificate for this name automatically.
+# Caddy obtains and renews the certificates for these names automatically.
 
-pazuri.makutano.co.tz {
+kilimanjaropazurivilla.com {
     # adapter-node only pre-compresses the files it built, so server-rendered
     # pages and API payloads would otherwise go out raw.
     encode zstd gzip
     reverse_proxy kilimanjaro-pazuri:3000
+}
+
+# adapter-node's ORIGIN is single-valued, and SvelteKit's CSRF check rejects a
+# form POST whose Origin is not it. So every other name the villa answers to
+# redirects to the canonical host — none of them may serve the app.
+www.kilimanjaropazurivilla.com {
+    redir https://kilimanjaropazurivilla.com{uri} permanent
+}
+
+# The address the site launched on, kept so existing links still arrive.
+pazuri.makutano.co.tz {
+    redir https://kilimanjaropazurivilla.com{uri} permanent
 }

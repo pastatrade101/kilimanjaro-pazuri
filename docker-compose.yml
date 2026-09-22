@@ -2,7 +2,7 @@
 #
 #   docker compose up -d --build
 #
-# Caddy terminates TLS for pazuri.makutano.co.tz and proxies to this container
+# Caddy terminates TLS for kilimanjaropazurivilla.com and proxies to this container
 # over the shared `makutano-net` network, exactly as it does for Journeys and
 # Connect. The app port is NOT published to the host: the only way in is
 # through Caddy.
@@ -20,7 +20,7 @@ services:
       PORT: 3000
       # Public origin. REQUIRED behind a proxy or SvelteKit's CSRF origin check
       # rejects every form POST.
-      ORIGIN: ${PUBLIC_SITE_URL:-https://pazuri.makutano.co.tz}
+      ORIGIN: ${PUBLIC_SITE_URL:-https://kilimanjaropazurivilla.com}
       # Let adapter-node build correct https URLs from Caddy's forwarded headers.
       PROTOCOL_HEADER: x-forwarded-proto
       HOST_HEADER: x-forwarded-host

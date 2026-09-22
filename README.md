@@ -6,7 +6,8 @@ A SvelteKit application: the site and its backend are one deployable. Every
 word comes from the *Kilimanjaro Pazuri Brand & Copy Deck*, and the layout is
 built on the Zoomvilla single-property template, re-themed to the brand.
 
-Live at **https://pazuri.makutano.co.tz**
+Live at **https://kilimanjaropazurivilla.com**
+(`www.` and the original `pazuri.makutano.co.tz` redirect to it.)
 
 ---
 
@@ -79,7 +80,8 @@ honeypot field, and are rate limited per address. Enquiries land in `/admin`.
 
 ## Deploying
 
-DNS for `pazuri.makutano.co.tz` already points at the server, which runs Caddy.
+DNS for `kilimanjaropazurivilla.com` and `www.` already points at the server,
+which runs Caddy. `pazuri.makutano.co.tz` still points there too and redirects.
 
 **On the server, once:**
 
