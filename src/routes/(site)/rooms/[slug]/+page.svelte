@@ -16,6 +16,46 @@
 	const room = $derived(data.room);
 	const issues = $derived(form?.issues ?? {});
 	const values = $derived(form?.values ?? {});
+
+	let checkIn = $state('');
+	let checkOut = $state('');
+	let quote = $state<{ available: boolean; nights: number; totalUsd: number } | null>(null);
+	let checking = $state(false);
+
+	/** The night after arrival is the earliest a guest can leave. */
+	const minCheckOut = $derived(
+		checkIn
+			? new Date(Date.parse(checkIn + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10)
+			: data.from
+	);
+
+	/*
+	 * Advisory only — the booking itself is settled by the database. This runs
+	 * so a guest learns the nights are gone before filling the rest in, rather
+	 * than after.
+	 */
+	$effect(() => {
+		const from = checkIn;
+		const to = checkOut;
+		if (!from || !to || to <= from) {
+			quote = null;
+			return;
+		}
+		let dropped = false;
+		checking = true;
+		fetch(`/api/availability?room=${room.slug}&check_in=${from}&check_out=${to}`)
+			.then((r) => r.json())
+			.then((d) => {
+				if (!dropped && !d.error) quote = d;
+			})
+			.catch(() => {})
+			.finally(() => {
+				if (!dropped) checking = false;
+			});
+		return () => {
+			dropped = true;
+		};
+	});
 	const heroStats = $derived([
 		{ label: 'Nightly rate', value: `$${room.rate_usd} USD` },
 		{ label: 'Bathroom', value: room.bathroom },
@@ -109,8 +149,11 @@
 
 						{#if form?.success}
 							<div class="kp-alert kp-alert--ok" role="status">
-								Thank you — your enquiry for the {room.name} has reached us. We will reply by
-								email shortly.
+								<strong>Your dates are held.</strong>
+								<span class="kp-booking__reference">{form.reference}</span>
+								The {room.name} is reserved for you for {form.nights}
+								{form.nights === 1 ? 'night' : 'nights'}, ${form.total} USD, payable at the
+								villa. We will confirm by email shortly — please quote that reference.
 							</div>
 						{:else}
 							{#if issues.form}
@@ -143,7 +186,7 @@
 
 									<div class="kp-field">
 										<label for="bk-guests">Guests</label>
-										<input id="bk-guests" type="number" name="guests" min="1" max="20" value={values.guests ?? ''} />
+										<input id="bk-guests" type="number" name="guests" min="1" max="20" required value={values.guests ?? ''} />
 										{#if issues.guests}<span class="kp-form__error">{issues.guests}</span>{/if}
 									</div>
 								</div>
@@ -151,15 +194,35 @@
 								<div class="kp-field-row">
 									<div class="kp-field">
 										<label for="bk-in">Arrival</label>
-										<input id="bk-in" type="date" name="check_in" value={values.check_in ?? ''} />
+										<input id="bk-in" type="date" name="check_in" required bind:value={checkIn}
+											min={data.from} max={data.until} />
 										{#if issues.check_in}<span class="kp-form__error">{issues.check_in}</span>{/if}
 									</div>
 									<div class="kp-field">
 										<label for="bk-out">Departure</label>
-										<input id="bk-out" type="date" name="check_out" value={values.check_out ?? ''} />
+										<input id="bk-out" type="date" name="check_out" required bind:value={checkOut}
+											min={minCheckOut} max={data.until} />
 										{#if issues.check_out}<span class="kp-form__error">{issues.check_out}</span>{/if}
 									</div>
 								</div>
+
+								{#if checking}
+									<p class="kp-booking__quote" aria-live="polite">Checking those nights…</p>
+								{:else if quote}
+									<p
+										class="kp-booking__quote"
+										class:kp-booking__quote--bad={!quote.available}
+										aria-live="polite"
+									>
+										{#if quote.available}
+											<strong>Free</strong> — {quote.nights}
+											{quote.nights === 1 ? 'night' : 'nights'} ·
+											<strong>${quote.totalUsd} USD</strong> in total, payable at the villa.
+										{:else}
+											Those nights are already taken. Please try different dates.
+										{/if}
+									</p>
+								{/if}
 
 								<div class="kp-field">
 									<label for="bk-message">Anything we should know?</label>
@@ -172,9 +235,17 @@
 									<input type="text" id="bk-website" name="website" tabindex="-1" autocomplete="off" />
 								</div>
 
-								<button type="submit" class="kp-btn kp-btn--primary kp-booking__submit">
-									{copy.cta}
+								<button
+									type="submit"
+									class="kp-btn kp-btn--primary kp-booking__submit"
+									disabled={quote ? !quote.available : false}
+								>
+									{quote && !quote.available ? 'Those nights are taken' : 'Request these dates'}
 								</button>
+								<p class="kp-booking__terms">
+									No payment is taken now. We hold your dates and confirm by email; you settle
+									at the villa.
+								</p>
 							</form>
 						{/if}
 

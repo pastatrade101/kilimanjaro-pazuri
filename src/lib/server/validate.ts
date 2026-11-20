@@ -112,3 +112,79 @@ export type EnquiryInput = {
 	guests: number | null;
 	message: string | null;
 };
+
+export type BookingInput = {
+	roomSlug: string;
+	checkIn: string;
+	checkOut: string;
+	guests: number;
+	name: string;
+	email: string;
+	phone: string | null;
+	message: string | null;
+};
+
+/** The longest stay the form will take; beyond this, a person should be involved. */
+const MAX_NIGHTS = 60;
+
+/**
+ * A booking is an enquiry that has to say when. On the contact form the dates
+ * are optional, because a guest may be asking before they know — here they are
+ * the whole point, since a stay with no nights cannot hold a room.
+ */
+export function validateBooking(
+	data: FormData
+): { ok: true; value: BookingInput } | { ok: false; issues: Issues; values: Record<string, string> } {
+	const base = validateEnquiry(data, 'booking');
+
+	const checkIn = text(data.get('check_in'));
+	const checkOut = text(data.get('check_out'));
+	const guestsRaw = text(data.get('guests'));
+	const roomSlug = text(data.get('room'));
+
+	const issues: Issues = base.ok ? {} : { ...base.issues };
+
+	if (!checkIn) issues.check_in = 'Please choose your arrival date.';
+	if (!checkOut) issues.check_out = 'Please choose your departure date.';
+	if (!guestsRaw) issues.guests = 'Please say how many guests are staying.';
+	if (!roomSlug) issues.form = 'Please choose a room.';
+
+	if (checkIn && checkOut && isRealDate(checkIn) && isRealDate(checkOut) && checkOut > checkIn) {
+		const stay = Math.round(
+			(Date.parse(checkOut + 'T00:00:00Z') - Date.parse(checkIn + 'T00:00:00Z')) / 86_400_000
+		);
+		if (stay > MAX_NIGHTS) {
+			issues.check_out = `For stays longer than ${MAX_NIGHTS} nights, please contact us directly.`;
+		}
+	}
+
+	const values = base.ok
+		? {
+				name: base.value.name,
+				email: base.value.email,
+				phone: base.value.phone ?? '',
+				message: base.value.message ?? '',
+				room: roomSlug,
+				check_in: checkIn,
+				check_out: checkOut,
+				guests: guestsRaw
+			}
+		: base.values;
+
+	if (Object.keys(issues).length > 0) return { ok: false, issues, values };
+	if (!base.ok) return { ok: false, issues: base.issues, values: base.values };
+
+	return {
+		ok: true,
+		value: {
+			roomSlug,
+			checkIn,
+			checkOut,
+			guests: Number(guestsRaw),
+			name: base.value.name,
+			email: base.value.email,
+			phone: base.value.phone,
+			message: base.value.message
+		}
+	};
+}

@@ -6,6 +6,7 @@ import schema0001 from '../../../supabase/migrations/0001_init.sql?raw';
 import schema0002 from '../../../supabase/migrations/0002_content.sql?raw';
 import schema0003 from '../../../supabase/migrations/0003_lists.sql?raw';
 import schema0004 from '../../../supabase/migrations/0004_room_images.sql?raw';
+import schema0005 from '../../../supabase/migrations/0005_bookings.sql?raw';
 
 /**
  * Nothing connects and nothing throws when this module is imported: the build
@@ -140,6 +141,7 @@ async function migrate(sql: Sql) {
 	// Runs last: it carries each room's photograph across, so the rooms must
 	// already be there.
 	await sql.unsafe(schema0004);
+	await sql.unsafe(schema0005);
 
 }
 

@@ -1,29 +1,50 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getRoom, listAvailableRooms, createEnquiry, listRoomImages } from '$lib/server/repo';
-import { validateEnquiry, type Issues } from '$lib/server/validate';
+import { getRoom, listAvailableRooms, listRoomImages } from '$lib/server/repo';
+import { validateBooking, type Issues } from '$lib/server/validate';
 import { limitEnquiries } from '$lib/server/ratelimit';
+import { createBooking, takenSpans, today, DatesTakenError } from '$lib/server/bookings';
+
+/** How far ahead the calendar shows nights that are already spoken for. */
+const HORIZON_DAYS = 400;
+
+function addDays(iso: string, days: number): string {
+	const date = new Date(iso + 'T00:00:00Z');
+	date.setUTCDate(date.getUTCDate() + days);
+	return date.toISOString().slice(0, 10);
+}
 
 export const load: PageServerLoad = async ({ params }) => {
 	const room = await getRoom(params.slug);
 	if (!room) error(404, 'We could not find that room.');
 
-	const others = (await listAvailableRooms())
-		.filter((r) => r.slug !== room.slug)
-		.slice(0, 3);
-	return { room, others, images: await listRoomImages(params.slug) };
+	const others = (await listAvailableRooms()).filter((r) => r.slug !== room.slug).slice(0, 3);
+
+	const from = today();
+	return {
+		room,
+		others,
+		images: await listRoomImages(params.slug),
+		// The form greys these out before the guest picks, rather than letting
+		// them fill the whole thing in and then be told no.
+		taken: await takenSpans(params.slug, from, addDays(from, HORIZON_DAYS)),
+		from,
+		until: addDays(from, HORIZON_DAYS)
+	};
 };
 
 export const actions: Actions = {
 	default: async ({ request, params, getClientAddress }) => {
 		const limit = limitEnquiries(getClientAddress());
 		if (!limit.allowed) {
-			const issues: Issues = { form: 'Too many enquiries from this connection. Please try again shortly.' };
+			const issues: Issues = {
+				form: 'Too many requests from this connection. Please try again shortly.'
+			};
 			return fail(429, { issues, values: {} as Record<string, string> });
 		}
 
 		// The slug reaches here from the URL; a room that has since been removed
-		// must not silently collect enquiries.
+		// must not silently take bookings.
 		if (!(await getRoom(params.slug))) {
 			const issues: Issues = { form: 'That room is no longer available.' };
 			return fail(404, { issues, values: {} as Record<string, string> });
@@ -32,10 +53,27 @@ export const actions: Actions = {
 		const data = await request.formData();
 		data.set('room', params.slug);
 
-		const result = validateEnquiry(data, 'booking');
+		const result = validateBooking(data);
 		if (!result.ok) return fail(400, { issues: result.issues, values: result.values });
 
-		await createEnquiry(result.value);
-		return { success: true };
+		try {
+			const booking = await createBooking(result.value);
+			return {
+				success: true,
+				reference: booking.reference,
+				total: booking.total,
+				nights: booking.nights
+			};
+		} catch (cause) {
+			// Someone took the nights between the page loading and this submit.
+			// The database decided it, so the guest is told the truth.
+			if (cause instanceof DatesTakenError) {
+				return fail(409, {
+					issues: { form: cause.message } as Issues,
+					values: result.value as unknown as Record<string, string>
+				});
+			}
+			throw cause;
+		}
 	}
 };

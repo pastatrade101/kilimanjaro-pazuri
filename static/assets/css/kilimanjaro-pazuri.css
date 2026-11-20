@@ -6031,3 +6031,91 @@ img {
 	.kp-login__form > *:nth-child(5) { animation-delay: 210ms; }
 	.kp-login__form > *:nth-child(6) { animation-delay: 260ms; }
 }
+
+/* ---------------------------------------------------- booking availability */
+
+/*
+ * The live answer under the date fields. It changes while the guest is
+ * reading it, so it is a polite live region and never moves the layout:
+ * a fixed minimum height keeps the submit button still.
+ */
+.kp-booking__quote {
+	margin: 0 0 18px;
+	padding: 12px 14px;
+	min-height: 44px;
+	border-radius: 6px;
+	background: var(--kp-tint);
+	border-left: 3px solid var(--kp-primary);
+	color: var(--kp-ink);
+	font-size: 14.5px;
+	line-height: 1.5;
+}
+
+.kp-booking__quote strong {
+	color: var(--kp-primary);
+	font-weight: 600;
+}
+
+.kp-booking__quote--bad {
+	border-left-color: #a6342c;
+	background: #fbf0ef;
+	color: #7d2a23;
+}
+
+.kp-booking__quote--bad strong {
+	color: #7d2a23;
+}
+
+.kp-booking__submit[disabled] {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.kp-booking__terms {
+	margin: 12px 0 0;
+	color: var(--kp-accent-text);
+	font-size: 12.5px;
+	line-height: 1.5;
+}
+
+/* The reference is read aloud and copied, so it is set apart from the prose. */
+.kp-booking__reference {
+	display: block;
+	margin: 8px 0;
+	font-family: var(--zoomvilla-font2), monospace;
+	font-size: 22px;
+	letter-spacing: 0.12em;
+	font-weight: 600;
+	color: var(--kp-primary);
+}
+
+/* --------------------------------------------------------- admin bookings */
+
+.kp-btn--small {
+	padding: 7px 12px;
+	font-size: 11.5px;
+	letter-spacing: 0.08em;
+}
+
+/* A stay that has already ended is still useful to read, but should not
+   compete with the ones that need an answer. */
+.kp-admin__row--past {
+	opacity: 0.55;
+}
+
+.kp-admin__block {
+	border: 1px solid var(--zoomvilla-border-color);
+	border-radius: 8px;
+	padding: 14px 18px;
+	background: var(--kp-tint);
+}
+
+.kp-admin__block > summary {
+	cursor: pointer;
+	font-weight: 600;
+	color: var(--kp-primary);
+}
+
+.kp-admin__block__form {
+	margin-top: 16px;
+}
