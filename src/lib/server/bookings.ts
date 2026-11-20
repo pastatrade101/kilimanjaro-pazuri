@@ -219,3 +219,21 @@ export async function bookingCounts(): Promise<Record<string, number>> {
 	`;
 	return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
 }
+
+/** One booking, for the message that follows a decision. */
+export async function getBooking(id: number): Promise<Booking | undefined> {
+	const sql = await dbReady();
+	const [row] = await sql<Booking[]>`
+		SELECT b.id, b.reference, b.kind, b.room_slug, r.name AS room_name,
+		       to_char(b.check_in, 'YYYY-MM-DD') AS check_in,
+		       to_char(b.check_out, 'YYYY-MM-DD') AS check_out,
+		       (b.check_out - b.check_in) AS nights,
+		       b.guests, b.guest_name, b.email, b.phone, b.message,
+		       b.rate_usd, b.total_usd, b.status, b.note,
+		       to_char(b.created_at, 'YYYY-MM-DD HH24:MI') AS created_at
+		  FROM bookings b
+		  LEFT JOIN rooms r ON r.slug = b.room_slug
+		 WHERE b.id = ${id}
+	`;
+	return row ? { ...row, id: Number(row.id), nights: Number(row.nights) } : undefined;
+}

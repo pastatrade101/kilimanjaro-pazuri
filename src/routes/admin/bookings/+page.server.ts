@@ -1,7 +1,9 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { listRooms } from '$lib/server/repo';
+import { sendInBackground, guestDecision } from '$lib/server/mail';
 import {
+	getBooking,
 	listBookings,
 	setBookingStatus,
 	bookingCounts,
@@ -40,6 +42,29 @@ export const actions: Actions = {
 
 		try {
 			await setBookingStatus(id, status);
+
+			// The guest was told we would write; this is where that happens.
+			if (status === 'confirmed' || status === 'declined') {
+				const booking = await getBooking(id);
+				if (booking && booking.kind === 'booking' && booking.email) {
+					sendInBackground(
+						guestDecision(
+							{
+								reference: booking.reference,
+								roomName: booking.room_name ?? booking.room_slug,
+								checkIn: booking.check_in,
+								checkOut: booking.check_out,
+								nights: booking.nights,
+								guests: booking.guests,
+								total: booking.total_usd,
+								name: booking.guest_name ?? 'there',
+								email: booking.email
+							},
+							status === 'confirmed'
+						)
+					);
+				}
+			}
 		} catch (cause) {
 			// Reinstating a cancelled booking can collide with whatever took
 			// the nights in the meantime.

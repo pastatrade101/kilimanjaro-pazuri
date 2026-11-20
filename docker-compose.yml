@@ -28,6 +28,10 @@ services:
       ADDRESS_HEADER: X-Forwarded-For
       XFF_DEPTH: 1
       # The villa's rooms, enquiries and admin sessions live in Supabase.
+      # Optional. Absent, the site runs as before and logs what it would send.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_TO: ${MAIL_TO:-}
       DATABASE_URL: ${DATABASE_URL}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}

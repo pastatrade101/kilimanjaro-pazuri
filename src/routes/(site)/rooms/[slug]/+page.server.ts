@@ -4,6 +4,8 @@ import { getRoom, listAvailableRooms, listRoomImages } from '$lib/server/repo';
 import { validateBooking, type Issues } from '$lib/server/validate';
 import { limitEnquiries } from '$lib/server/ratelimit';
 import { createBooking, takenSpans, today, DatesTakenError } from '$lib/server/bookings';
+import { sendInBackground, ownerAlert, guestAcknowledgement, ownerAddress } from '$lib/server/mail';
+import { site } from '$lib/content/site';
 
 /** How far ahead the calendar shows nights that are already spoken for. */
 const HORIZON_DAYS = 400;
@@ -45,7 +47,8 @@ export const actions: Actions = {
 
 		// The slug reaches here from the URL; a room that has since been removed
 		// must not silently take bookings.
-		if (!(await getRoom(params.slug))) {
+		const room = await getRoom(params.slug);
+		if (!room) {
 			const issues: Issues = { form: 'That room is no longer available.' };
 			return fail(404, { issues, values: {} as Record<string, string> });
 		}
@@ -58,6 +61,28 @@ export const actions: Actions = {
 
 		try {
 			const booking = await createBooking(result.value);
+
+			/*
+			 * Started, never awaited. The nights are already held; whether a
+			 * message about them gets out is a lesser matter than leaving the
+			 * guest staring at a spinner because a mail provider is slow.
+			 */
+			const mail = {
+				reference: booking.reference,
+				roomName: room.name,
+				checkIn: result.value.checkIn,
+				checkOut: result.value.checkOut,
+				nights: booking.nights,
+				guests: result.value.guests,
+				total: booking.total,
+				name: result.value.name,
+				email: result.value.email,
+				phone: result.value.phone,
+				message: result.value.message
+			};
+			sendInBackground(ownerAlert(mail, ownerAddress(site.email)));
+			sendInBackground(guestAcknowledgement(mail));
+
 			return {
 				success: true,
 				reference: booking.reference,
