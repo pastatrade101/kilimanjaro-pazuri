@@ -37,6 +37,14 @@ export function ownerAddress(fallback: string): string {
 }
 
 /**
+ * Where a guest's reply lands. The `from` address is a sending domain and may
+ * not take incoming mail, so every message to a guest carries this instead.
+ */
+export function replyAddress(fallback: string): string {
+	return env.MAIL_REPLY_TO || env.MAIL_TO || fallback;
+}
+
+/**
  * Sends, and resolves either way. Callers are not meant to await this; it is
  * started and left to finish on its own.
  */
@@ -173,9 +181,10 @@ export function ownerAlert(b: BookingMail, to: string): Mail {
 }
 
 /** To the guest: we have you, and here is what you asked for. */
-export function guestAcknowledgement(b: BookingMail): Mail {
+export function guestAcknowledgement(b: BookingMail, replyTo?: string): Mail {
 	return {
 		to: b.email,
+		replyTo,
 		subject: `We have your dates — booking ${b.reference}`,
 		html: layout(
 			'Your dates are held',
@@ -193,9 +202,10 @@ export function guestAcknowledgement(b: BookingMail): Mail {
 }
 
 /** To the guest, once the villa has decided. */
-export function guestDecision(b: BookingMail, confirmed: boolean): Mail {
+export function guestDecision(b: BookingMail, confirmed: boolean, replyTo?: string): Mail {
 	return {
 		to: b.email,
+		replyTo,
 		subject: confirmed
 			? `Confirmed — your stay at Kilimanjaro Pazuri (${b.reference})`
 			: `About your booking ${b.reference}`,

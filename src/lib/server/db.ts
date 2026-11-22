@@ -106,11 +106,50 @@ const seedGallery = [
 ];
 
 /**
+ * Whether the schema is already the current one. The last thing the migrations
+ * create is the bookings overlap constraint, so its presence means every step
+ * before it has run.
+ *
+ * This exists to keep the common case off the DDL path entirely. A boot
+ * against an up-to-date database then costs one cheap SELECT instead of five
+ * schema scripts, two seed inserts and the table locks they take.
+ */
+async function alreadyCurrent(sql: Sql): Promise<boolean> {
+	const [row] = await sql<{ ok: boolean }[]>`
+		SELECT EXISTS (
+			SELECT 1 FROM pg_constraint WHERE conname = 'bookings_no_overlap'
+		) AS ok
+	`;
+	return row?.ok ?? false;
+}
+
+/**
  * Applies the schema and seeds the rooms and gallery. Safe to run on every
  * boot: the DDL is `if not exists`, and the seeds are keyed on the natural
  * unique columns, so they fill an empty project and then do nothing.
  */
 async function migrate(sql: Sql) {
+	if (await alreadyCurrent(sql)) return;
+
+	await sql.begin(async (tx) => {
+		/*
+		 * One client that leaves a transaction open holds a read lock on these
+		 * tables, and the ALTER TABLEs below need an exclusive one. Without a
+		 * lock_timeout they queue behind it indefinitely — and because every
+		 * query in the app goes through dbReady(), the whole site hangs with
+		 * them. This is not hypothetical: an orphaned transaction took the site
+		 * down for eight hours.
+		 *
+		 * Failing fast is much the better outcome. dbReady() does not cache a
+		 * failure, so the next request simply tries again.
+		 */
+		await tx.unsafe("SET LOCAL lock_timeout = '5s'");
+		await tx.unsafe("SET LOCAL statement_timeout = '60s'");
+		await runSchema(tx as unknown as Sql);
+	});
+}
+
+async function runSchema(sql: Sql) {
 	await sql.unsafe(schema0001);
 	await sql.unsafe(schema0002);
 	await sql.unsafe(schema0003);

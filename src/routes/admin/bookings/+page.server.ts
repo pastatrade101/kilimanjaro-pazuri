@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { listRooms } from '$lib/server/repo';
-import { sendInBackground, guestDecision } from '$lib/server/mail';
+import { sendInBackground, guestDecision, replyAddress } from '$lib/server/mail';
+import { site } from '$lib/content/site';
 import {
 	getBooking,
 	listBookings,
@@ -60,7 +61,8 @@ export const actions: Actions = {
 								name: booking.guest_name ?? 'there',
 								email: booking.email
 							},
-							status === 'confirmed'
+							status === 'confirmed',
+							replyAddress(site.email)
 						)
 					);
 				}

@@ -4,7 +4,13 @@ import { getRoom, listAvailableRooms, listRoomImages } from '$lib/server/repo';
 import { validateBooking, type Issues } from '$lib/server/validate';
 import { limitEnquiries } from '$lib/server/ratelimit';
 import { createBooking, takenSpans, today, DatesTakenError } from '$lib/server/bookings';
-import { sendInBackground, ownerAlert, guestAcknowledgement, ownerAddress } from '$lib/server/mail';
+import {
+	sendInBackground,
+	ownerAlert,
+	guestAcknowledgement,
+	ownerAddress,
+	replyAddress
+} from '$lib/server/mail';
 import { site } from '$lib/content/site';
 
 /** How far ahead the calendar shows nights that are already spoken for. */
@@ -81,7 +87,7 @@ export const actions: Actions = {
 				message: result.value.message
 			};
 			sendInBackground(ownerAlert(mail, ownerAddress(site.email)));
-			sendInBackground(guestAcknowledgement(mail));
+			sendInBackground(guestAcknowledgement(mail, replyAddress(site.email)));
 
 			return {
 				success: true,
