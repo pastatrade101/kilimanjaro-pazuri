@@ -16,7 +16,7 @@ import { env } from '$env/dynamic/private';
 const ENDPOINT = 'https://api.resend.com/emails';
 
 type Mail = {
-	to: string;
+	to: string | string[];
 	subject: string;
 	html: string;
 	text: string;
@@ -31,9 +31,18 @@ function configured(): { key: string; from: string } | null {
 	return { key, from };
 }
 
-/** Where the villa's own alerts go. */
-export function ownerAddress(fallback: string): string {
-	return env.MAIL_TO || fallback;
+/**
+ * Where the villa's own alerts go. MAIL_TO takes a comma-separated list, so an
+ * alert can land in more than one inbox — worth having while an address is
+ * still unproven, since a booking nobody sees is the single failure this whole
+ * feature exists to prevent.
+ */
+export function ownerAddress(fallback: string): string[] {
+	const configured = (env.MAIL_TO || fallback)
+		.split(',')
+		.map((address) => address.trim())
+		.filter(Boolean);
+	return configured.length > 0 ? configured : [fallback];
 }
 
 /**
@@ -41,7 +50,9 @@ export function ownerAddress(fallback: string): string {
  * not take incoming mail, so every message to a guest carries this instead.
  */
 export function replyAddress(fallback: string): string {
-	return env.MAIL_REPLY_TO || env.MAIL_TO || fallback;
+	// A reply has one destination, so the first address wins if several are set.
+	const configured = env.MAIL_REPLY_TO || env.MAIL_TO || fallback;
+	return configured.split(',')[0].trim() || fallback;
 }
 
 /**
@@ -51,7 +62,8 @@ export function replyAddress(fallback: string): string {
 export async function send(mail: Mail): Promise<boolean> {
 	const config = configured();
 	if (!config) {
-		console.info(`[mail] not configured — would have sent "${mail.subject}" to ${mail.to}`);
+		const to = Array.isArray(mail.to) ? mail.to.join(', ') : mail.to;
+		console.info(`[mail] not configured — would have sent "${mail.subject}" to ${to}`);
 		return false;
 	}
 
@@ -64,7 +76,7 @@ export async function send(mail: Mail): Promise<boolean> {
 			},
 			body: JSON.stringify({
 				from: config.from,
-				to: [mail.to],
+				to: Array.isArray(mail.to) ? mail.to : [mail.to],
 				subject: mail.subject,
 				html: mail.html,
 				text: mail.text,
@@ -150,7 +162,7 @@ const stay = (b: BookingMail): [string, string][] => [
 ];
 
 /** To the villa: someone has just taken nights off the calendar. */
-export function ownerAlert(b: BookingMail, to: string): Mail {
+export function ownerAlert(b: BookingMail, to: string | string[]): Mail {
 	const contact: [string, string][] = [
 		['Name', b.name],
 		['Email', b.email],
