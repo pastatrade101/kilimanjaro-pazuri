@@ -30,6 +30,11 @@ function connect(): Sql {
 		prepare: false,
 		max: Number(env.DATABASE_POOL_MAX ?? 5),
 		idle_timeout: 30,
+		// Retire a connection after half an hour whatever its state. A pooled
+		// socket that dies quietly — the far end restarts, a NAT table forgets
+		// it — stays in the pool looking usable and every query handed to it
+		// waits forever. Recycling puts a ceiling on how long one can haunt us.
+		max_lifetime: 60 * 30,
 		connect_timeout: 15,
 		onnotice: () => {}
 	});

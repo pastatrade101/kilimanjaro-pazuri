@@ -1,9 +1,14 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { dev, version } from '$app/environment';
+import { building, dev, version } from '$app/environment';
 import { readSession, pruneSessions } from '$lib/server/auth';
+import { startWatchdog } from '$lib/server/watchdog';
 
 // Fire and forget at boot; a failure here must not stop the server starting.
 void pruneSessions().catch(() => {});
+
+// Not during a build, and not in dev, where exiting would just kill the dev
+// server while someone is editing.
+if (!building && !dev) startWatchdog();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.admin = await readSession(event.cookies);
